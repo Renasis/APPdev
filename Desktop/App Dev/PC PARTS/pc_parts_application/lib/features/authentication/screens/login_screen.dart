@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/routes/route_names.dart';
+import '../providers/auth_provider.dart';
 import '../../../shared/widgets/app_logo.dart';
 import '../../../shared/widgets/auth_text_field.dart';
 import '../../../shared/widgets/primary_button.dart';
@@ -20,7 +22,38 @@ class _LoginScreenState extends State<LoginScreen> {
   bool obscurePassword = true;
 
   @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signIn() async {
+    final authProvider = context.read<AuthProvider>();
+
+    final signedIn = await authProvider.login(
+      email: emailController.text,
+      password: passwordController.text,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (signedIn) {
+      context.go(RouteNames.home);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(authProvider.errorMessage ?? 'Sign in failed.')),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: Colors.white,
 
@@ -30,7 +63,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               const SizedBox(height: 40),
 
               const AppLogo(),
@@ -39,29 +71,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const Text(
                 'Welcome back',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 8),
 
               const Text(
                 'Sign in to your account to continue',
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
+                style: TextStyle(color: Colors.grey),
               ),
 
               const SizedBox(height: 40),
 
               const Text(
                 'EMAIL ADDRESS',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
 
               const SizedBox(height: 10),
@@ -75,10 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const Text(
                 'PASSWORD',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
 
               const SizedBox(height: 10),
@@ -89,14 +110,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: obscurePassword,
                 suffixIcon: IconButton(
                   icon: Icon(
-                    obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
+                    obscurePassword ? Icons.visibility_off : Icons.visibility,
                   ),
                   onPressed: () {
                     setState(() {
-                      obscurePassword =
-                          !obscurePassword;
+                      obscurePassword = !obscurePassword;
                     });
                   },
                 ),
@@ -108,33 +126,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    context.push(
-                      RouteNames.forgotPassword,
-                    );
+                    context.push(RouteNames.forgotPassword);
                   },
-                  child: const Text(
-                    'Forgot Password?',
-                  ),
+                  child: const Text('Forgot Password?'),
                 ),
               ),
 
               const SizedBox(height: 10),
 
-              PrimaryButton(
-                text: 'Sign In',
-                onPressed: () {
-                  context.go(RouteNames.home);
-                },
-              ),
+              if (isLoading)
+                const Center(child: CircularProgressIndicator())
+              else
+                PrimaryButton(text: 'Sign In', onPressed: _signIn),
 
               const SizedBox(height: 24),
 
               const Center(
                 child: Text(
                   'or continue with',
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(color: Colors.grey),
                 ),
               ),
 
@@ -155,14 +165,10 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    "Don't have an account? ",
-                  ),
+                  const Text("Don't have an account? "),
                   GestureDetector(
                     onTap: () {
-                      context.push(
-                        RouteNames.register,
-                      );
+                      context.push(RouteNames.register);
                     },
                     child: const Text(
                       'Register',
