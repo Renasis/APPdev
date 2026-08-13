@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pc_parts_application/features/admin/inventory/providers/inventory_provider.dart';
 import 'package:pc_parts_application/features/customer/cart/providers/cart_provider.dart';
 import 'package:pc_parts_application/features/customer/pc_builder/providers/pc_builder_provider.dart';
 import 'package:pc_parts_application/features/customer/products/models/product_model.dart';
@@ -27,7 +28,16 @@ void main() {
     builder.selectPsu(_product('psu', 'PSU'));
     builder.selectCase(_product('case', 'Case'));
 
-    final cart = CartProvider();
+    final inventory = InventoryProvider();
+    for (final product in builder.selectedProducts) {
+      inventory.addInventoryItem(
+        id: product.id,
+        productName: product.name,
+        stock: product.stock,
+      );
+    }
+
+    final cart = CartProvider()..setInventoryProvider(inventory);
     final added = cart.addCustomPcBuild(
       buildName: 'Custom PC Build',
       products: builder.selectedProducts,
