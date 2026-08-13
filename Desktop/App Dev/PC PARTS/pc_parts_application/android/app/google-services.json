@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "689289956295",
+    "project_id": "end-pc-parts",
+    "storage_bucket": "end-pc-parts.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:689289956295:android:eaeefae4c87735d02d67e2",
+        "android_client_info": {
+          "package_name": "com.example.pc_parts_application"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfq9-Iw3ECpj46DKp7e7-QiB-Bv7NyXEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
