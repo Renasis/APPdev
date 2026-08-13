@@ -1,17 +1,48 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/order_model.dart';
+import '../repository/order_repository.dart';
 import '../../cart/models/cart_item.dart';
 import '../../notifications/providers/notification_provider.dart'
     as customer_notifications;
 
 class OrderProvider extends ChangeNotifier {
+  /// Without a [repository] orders only live for the current session, which is
+  /// what the widget tests rely on. With one, they are read from and written
+  /// back to Firestore.
+  OrderProvider({OrderRepository? repository}) : _repository = repository {
+    _subscription = repository?.watchOrders().listen(_onOrders);
+  }
+
+  final OrderRepository? _repository;
+
+  StreamSubscription<List<OrderModel>>? _subscription;
+
   final List<OrderModel> _orders = [];
   final Set<String> _notifiedOrderStatuses = <String>{};
 
   customer_notifications.NotificationProvider? _notificationProvider;
 
   List<OrderModel> get orders => _orders;
+
+  void _onOrders(List<OrderModel> orders) {
+    _orders
+      ..clear()
+      ..addAll(orders);
+    notifyListeners();
+  }
+
+  void _persist(OrderModel order) {
+    unawaited(_repository?.saveOrder(order) ?? Future<void>.value());
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
 
   void setNotificationProvider(
     customer_notifications.NotificationProvider provider,
@@ -61,6 +92,7 @@ class OrderProvider extends ChangeNotifier {
     );
 
     _orders.insert(0, order);
+    _persist(order);
 
     notifyListeners();
   }
@@ -136,6 +168,7 @@ class OrderProvider extends ChangeNotifier {
     );
 
     _orders[index] = updatedOrder;
+    _persist(updatedOrder);
 
     _addStatusNotification(updatedOrder);
 
@@ -199,7 +232,7 @@ class OrderProvider extends ChangeNotifier {
     }
 
     final order = _orders[index];
-    _orders[index] = OrderModel(
+    final updatedOrder = OrderModel(
       id: order.id,
       customerName: order.customerName,
       phoneNumber: order.phoneNumber,
@@ -213,6 +246,9 @@ class OrderProvider extends ChangeNotifier {
       orderDate: order.orderDate,
       status: order.status,
     );
+
+    _orders[index] = updatedOrder;
+    _persist(updatedOrder);
 
     final notificationProvider = _notificationProvider;
     if (notificationProvider != null) {
@@ -263,6 +299,7 @@ class OrderProvider extends ChangeNotifier {
     );
 
     _orders[index] = shippedOrder;
+    _persist(shippedOrder);
     _addStatusNotification(shippedOrder);
     notifyListeners();
   }

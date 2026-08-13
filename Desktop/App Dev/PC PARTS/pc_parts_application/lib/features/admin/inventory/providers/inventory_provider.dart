@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../notifications/providers/notification_provider.dart';
 import '../../../customer/orders/models/order_model.dart';
+import '../repository/inventory_repository.dart';
 
 
 
@@ -78,6 +81,28 @@ class StockShortage {
 // ========================================
 
 class InventoryProvider extends ChangeNotifier {
+  /// Without a [repository] the provider keeps its built-in demo stock, which
+  /// is what the widget tests rely on. With one, stock and movements come from
+  /// Firestore and every change is written back to it.
+  InventoryProvider({InventoryRepository? repository})
+      : _repository = repository {
+    if (repository == null) {
+      return;
+    }
+
+    _items.clear();
+    _movements.clear();
+
+    _itemSubscription = repository.watchItems().listen(_onItems);
+    _movementSubscription = repository.watchMovements().listen(_onMovements);
+  }
+
+  final InventoryRepository? _repository;
+
+  StreamSubscription<List<InventoryItem>>? _itemSubscription;
+
+  StreamSubscription<List<StockMovement>>? _movementSubscription;
+
   final List<InventoryItem> _items = [
     InventoryItem(
       id: '1',
@@ -150,6 +175,57 @@ class InventoryProvider extends ChangeNotifier {
 
   List<StockMovement> get movements => _movements;
 
+  void _onItems(List<InventoryItem> items) {
+    _items
+      ..clear()
+      ..addAll(items);
+
+    for (final item in _items) {
+      _checkStockLevel(item);
+    }
+
+    notifyListeners();
+  }
+
+  /// Movement ids for order deductions are deterministic
+  /// (`ORDER-<orderId>-<productId>`), so the persisted audit trail is what
+  /// tells us an order was already deducted after a restart.
+  void _onMovements(List<StockMovement> movements) {
+    _movements
+      ..clear()
+      ..addAll(movements);
+
+    for (final movement in movements) {
+      if (!movement.id.startsWith('ORDER-')) {
+        continue;
+      }
+
+      final withoutPrefix = movement.id.substring('ORDER-'.length);
+      final separator = withoutPrefix.lastIndexOf('-${movement.productId}');
+
+      if (separator > 0) {
+        _stockDeductedOrderIds.add(withoutPrefix.substring(0, separator));
+      }
+    }
+
+    notifyListeners();
+  }
+
+  void _persistItem(InventoryItem item) {
+    unawaited(_repository?.saveItem(item) ?? Future<void>.value());
+  }
+
+  void _persistMovement(StockMovement movement) {
+    unawaited(_repository?.saveMovement(movement) ?? Future<void>.value());
+  }
+
+  @override
+  void dispose() {
+    _itemSubscription?.cancel();
+    _movementSubscription?.cancel();
+    super.dispose();
+  }
+
   InventoryItem? itemById(String id) {
     for (final item in _items) {
       if (item.id == id) {
@@ -174,6 +250,7 @@ class InventoryProvider extends ChangeNotifier {
       stock: stock,
     );
     _items.add(item);
+    _persistItem(item);
     _checkStockLevel(item);
     notifyListeners();
     return true;
@@ -186,6 +263,7 @@ class InventoryProvider extends ChangeNotifier {
     }
 
     item.productName = productName;
+    _persistItem(item);
     _checkStockLevel(item);
     notifyListeners();
   }
@@ -197,6 +275,7 @@ class InventoryProvider extends ChangeNotifier {
     }
 
     _items.remove(item);
+    unawaited(_repository?.deleteItem(id) ?? Future<void>.value());
     _notificationProvider?.syncStockLevelNotification(
       productId: id,
       productName: item.productName,
@@ -283,6 +362,7 @@ class InventoryProvider extends ChangeNotifier {
     }
 
     _items[index].stock = newStock;
+    _persistItem(_items[index]);
 
     _checkStockLevel(
       _items[index],
@@ -332,9 +412,9 @@ class InventoryProvider extends ChangeNotifier {
 
         final previousStock = inventoryItem.stock;
         inventoryItem.stock -= entry.value;
+        _persistItem(inventoryItem);
 
-        _movements.insert(
-          0,
+        _recordMovement(
           StockMovement(
             id: 'ORDER-${order.id}-${entry.key}',
             productId: entry.key,
@@ -389,9 +469,9 @@ class InventoryProvider extends ChangeNotifier {
     final item = _items[index];
     final previousStock = item.stock;
     item.stock += quantity;
+    _persistItem(item);
 
-    _movements.insert(
-      0,
+    _recordMovement(
       StockMovement(
         id: 'STOCK-IN-${DateTime.now().microsecondsSinceEpoch}-$id',
         productId: item.id,
@@ -440,6 +520,7 @@ class InventoryProvider extends ChangeNotifier {
     }
 
     _items[index].stock -= quantity;
+    _persistItem(_items[index]);
 
     _checkStockLevel(
       _items[index],
@@ -459,11 +540,17 @@ class InventoryProvider extends ChangeNotifier {
   void addStockMovement(
     StockMovement movement,
   ) {
+    _recordMovement(movement);
+
+    notifyListeners();
+  }
+
+  void _recordMovement(StockMovement movement) {
     _movements.insert(
       0,
       movement,
     );
 
-    notifyListeners();
+    _persistMovement(movement);
   }
 }
