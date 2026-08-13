@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../../features/authentication/screens/forgot_password_screen.dart';
 import '../../features/authentication/screens/guest_prompt_screen.dart';
 import '../../features/authentication/screens/login_screen.dart';
 import '../../features/authentication/screens/register_screen.dart';
@@ -60,7 +61,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: RouteNames.guestLoginRequired,
       builder: (context, state) =>const GuestLoginRequiredScreen(),
-    ),  
+    ),
+
+    GoRoute(
+      path: RouteNames.forgotPassword,
+      builder: (context, state) => const ForgotPasswordScreen(),
+    ),
 
     GoRoute(
       path: RouteNames.otp,

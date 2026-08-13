@@ -1,8 +1,14 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'firebase_options.dart';
+
+// AUTHENTICATION
+import 'features/authentication/providers/auth_provider.dart';
+import 'features/authentication/services/auth_service.dart';
 
 // CUSTOMER PROVIDERS
 import 'features/customer/products/providers/product_provider.dart';
@@ -39,10 +45,20 @@ import 'features/staff/notifications/providers/staff_notification_settings_provi
 
 
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(FirebaseAuthService()),
+        ),
+
         // ========================================
         // CUSTOMER
         // ========================================

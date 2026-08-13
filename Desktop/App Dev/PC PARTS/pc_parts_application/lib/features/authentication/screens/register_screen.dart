@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/routes/route_names.dart';
+import '../providers/auth_provider.dart';
 import '../../../shared/widgets/auth_text_field.dart';
 import '../../../shared/widgets/primary_button.dart';
 
@@ -24,7 +26,71 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool acceptedTerms = false;
 
   @override
+  void dispose() {
+    fullNameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  String? _validate() {
+    if (fullNameController.text.trim().isEmpty ||
+        emailController.text.trim().isEmpty ||
+        passwordController.text.isEmpty) {
+      return 'Please fill in your name, email and password.';
+    }
+
+    if (passwordController.text != confirmPasswordController.text) {
+      return 'Passwords do not match.';
+    }
+
+    if (!acceptedTerms) {
+      return 'Please accept the Terms of Service to continue.';
+    }
+
+    return null;
+  }
+
+  Future<void> _createAccount() async {
+    final validationError = _validate();
+    if (validationError != null) {
+      _showMessage(validationError);
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+
+    final registered = await authProvider.register(
+      fullName: fullNameController.text,
+      email: emailController.text,
+      phone: phoneController.text,
+      password: passwordController.text,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (registered) {
+      context.go(RouteNames.home);
+      return;
+    }
+
+    _showMessage(authProvider.errorMessage ?? 'Registration failed.');
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: Colors.white,
 
@@ -33,10 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         title: const Text(
           'Create Account',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
         ),
       ),
 
@@ -47,24 +110,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               const SizedBox(height: 10),
 
               const Text(
                 'Fill in your details to get started',
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
+                style: TextStyle(color: Colors.grey),
               ),
 
               const SizedBox(height: 30),
 
               const Text(
                 'FULL NAME',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
 
               const SizedBox(height: 10),
@@ -78,10 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const Text(
                 'EMAIL ADDRESS',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
 
               const SizedBox(height: 10),
@@ -95,10 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const Text(
                 'PHONE NUMBER',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
 
               const SizedBox(height: 10),
@@ -112,10 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const Text(
                 'PASSWORD',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
 
               const SizedBox(height: 10),
@@ -126,9 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 obscureText: obscurePassword,
                 suffixIcon: IconButton(
                   icon: Icon(
-                    obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility,
+                    obscurePassword ? Icons.visibility_off : Icons.visibility,
                   ),
                   onPressed: () {
                     setState(() {
@@ -142,10 +188,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const Text(
                 'CONFIRM PASSWORD',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 1),
               ),
 
               const SizedBox(height: 10),
@@ -162,8 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   onPressed: () {
                     setState(() {
-                      obscureConfirmPassword =
-                          !obscureConfirmPassword;
+                      obscureConfirmPassword = !obscureConfirmPassword;
                     });
                   },
                 ),
@@ -196,21 +238,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 20),
 
-              PrimaryButton(
-                text: 'Create Account',
-                onPressed: () {
-                  context.push(RouteNames.otp);
-                },
-              ),
+              if (isLoading)
+                const Center(child: CircularProgressIndicator())
+              else
+                PrimaryButton(
+                  text: 'Create Account',
+                  onPressed: _createAccount,
+                ),
 
               const SizedBox(height: 30),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Already have an account? ',
-                  ),
+                  const Text('Already have an account? '),
 
                   GestureDetector(
                     onTap: () {
