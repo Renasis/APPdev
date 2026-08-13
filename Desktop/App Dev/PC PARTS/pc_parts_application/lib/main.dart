@@ -12,6 +12,9 @@ import 'features/authentication/services/auth_service.dart';
 
 // CUSTOMER PROVIDERS
 import 'features/customer/products/providers/product_provider.dart';
+import 'features/customer/products/repository/product_repository.dart';
+import 'features/customer/orders/repository/order_repository.dart';
+import 'features/admin/inventory/repository/inventory_repository.dart';
 import 'features/customer/wishlist/providers/wishlist_provider.dart';
 import 'features/customer/cart/providers/cart_provider.dart';
 import 'features/customer/orders/providers/order_provider.dart';
@@ -52,6 +55,10 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  final productRepository = ProductRepository();
+  final inventoryRepository = InventoryRepository();
+  final orderRepository = OrderRepository();
+
   runApp(
     MultiProvider(
       providers: [
@@ -64,7 +71,7 @@ Future<void> main() async {
         // ========================================
 
         ChangeNotifierProvider(
-          create: (_) => ProductProvider(),
+          create: (_) => ProductProvider(repository: productRepository),
         ),
 
         ChangeNotifierProvider(
@@ -95,13 +102,14 @@ Future<void> main() async {
         ChangeNotifierProxyProvider<
             customer_notifications.NotificationProvider,
             OrderProvider>(
-          create: (_) => OrderProvider(),
+          create: (_) => OrderProvider(repository: orderRepository),
           update: (
             context,
             notificationProvider,
             orderProvider,
           ) {
-            final provider = orderProvider ?? OrderProvider();
+            final provider =
+                orderProvider ?? OrderProvider(repository: orderRepository);
             provider.setNotificationProvider(notificationProvider);
             return provider;
           },
@@ -144,14 +152,15 @@ Future<void> main() async {
             admin_notifications.NotificationProvider,
             OrderProvider,
             InventoryProvider>(
-          create: (_) => InventoryProvider(),
+          create: (_) => InventoryProvider(repository: inventoryRepository),
           update: (
             context,
             notificationProvider,
             orderProvider,
             inventoryProvider,
           ) {
-            final provider = inventoryProvider ?? InventoryProvider();
+            final provider = inventoryProvider ??
+                InventoryProvider(repository: inventoryRepository);
 
             provider.setNotificationProvider(
               notificationProvider,
