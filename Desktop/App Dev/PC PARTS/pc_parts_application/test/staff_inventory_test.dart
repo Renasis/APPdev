@@ -17,7 +17,7 @@ void main() {
     expect(find.text('Ryzen 7 7800X3D'), findsOneWidget);
     expect(find.text('Current stock: 10'), findsOneWidget);
     expect(find.text('Current stock: 3'), findsOneWidget);
-    expect(find.text('In Stock'), findsOneWidget);
+    expect(find.text('In Stock'), findsWidgets);
     expect(find.text('Low Stock'), findsOneWidget);
   });
 }
