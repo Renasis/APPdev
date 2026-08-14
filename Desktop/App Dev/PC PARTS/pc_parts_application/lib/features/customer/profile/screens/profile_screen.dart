@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../orders/screens/orders_screen.dart';
 import '../../wishlist/screens/wishlist_screen.dart';
@@ -9,7 +10,8 @@ import 'personal_information_screen.dart';
 import '../../saved_builds/screens/saved_builds_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/profile_provider.dart';
-
+import '../../../../core/routes/route_names.dart';
+import '../../../authentication/providers/auth_provider.dart';
 
 
 class ProfileScreen extends StatelessWidget {
@@ -363,26 +365,48 @@ Widget build(BuildContext context) {
 
             SizedBox(
               width: double.infinity,
-
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Logout will be connected to authentication later.',
-                      ),
-                    ),
+                onPressed: () async {
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) {
+                      return AlertDialog(
+                        title: const Text('Logout'),
+                        content: const Text(
+                          'Are you sure you want to logout?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(dialogContext, false);
+                            },
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(dialogContext, true);
+                            },
+                            child: const Text('Logout'),
+                          ),
+                        ],
+                      );
+                    },
                   );
+
+                  if (shouldLogout != true || !context.mounted) {
+                    return;
+                  }
+
+                  await context.read<AuthProvider>().logout();
+
+                  if (!context.mounted) {
+                    return;
+                  }
+
+                  context.go(RouteNames.login);
                 },
-
-                icon: const Icon(
-                  Icons.logout,
-                ),
-
-                label: const Text(
-                  'Logout',
-                ),
+                icon: const Icon(Icons.logout),
+                label: const Text('Logout'),
               ),
             ),
 
