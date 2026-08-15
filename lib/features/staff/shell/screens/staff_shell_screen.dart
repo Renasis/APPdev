@@ -4,12 +4,18 @@ import 'package:provider/provider.dart';
 
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../inventory/staff_inventory_screen.dart';
+import '../../inventory/staff_stock_movement_screen.dart';
 import '../../orders/screens/staff_orders_screen.dart';
 import '../../notifications/providers/staff_notification_provider.dart';
 import '../../notifications/screens/staff_notifications_screen.dart';
 import '../../profile/screens/staff_profile_screen.dart';
+import '../../../admin/sales/screens/walk_in_sale_screen.dart';
+import '../../../admin/support/screens/admin_support_screen.dart';
+import '../../../customer/support/providers/support_provider.dart';
+import '../../../customer/support/repository/support_repository.dart';
 
 import '../../../authentication/providers/auth_provider.dart';
+import '../../../../core/routes/route_names.dart';
 import 'package:pc_parts_application/core/enums/user_role.dart';
 
 class StaffShellScreen extends StatefulWidget {
@@ -26,6 +32,9 @@ class _StaffShellScreenState extends State<StaffShellScreen> {
     DashboardScreen(showAppBar: false),
     StaffOrdersScreen(),
     StaffInventoryScreen(),
+    StaffStockMovementScreen(),
+    WalkInSaleScreen(),
+    AdminSupportScreen(),
     StaffNotificationsScreen(),
     StaffProfileScreen(),
   ];
@@ -34,6 +43,9 @@ class _StaffShellScreenState extends State<StaffShellScreen> {
     'Dashboard',
     'Orders',
     'Inventory',
+    'Stock Movements',
+    'POS / Walk-In Sales',
+    'Support / Inquiries',
     'Notifications',
     'Profile',
   ];
@@ -56,7 +68,42 @@ class _StaffShellScreenState extends State<StaffShellScreen> {
       );
     }
 
+    final userData = auth.currentUser;
+    final isActive = userData != null && userData.isActive;
+
+    if (!isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.go('/');
+        }
+      });
+
+      return const Scaffold(
+        body: Center(
+          child: Text('Your staff account is currently inactive. Please contact your administrator.'),
+        ),
+      );
+    }
+
     return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Staff Portal',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: () async {
+              await auth.logout();
+              if (mounted) {
+                context.go(RouteNames.roleSelection);
+              }
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: Row(
         children: [
           NavigationRail(
@@ -84,33 +131,48 @@ class _StaffShellScreenState extends State<StaffShellScreen> {
                 ],
               ),
             ),
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: Text('Dashboard'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.shopping_bag_outlined),
-                selectedIcon: Icon(Icons.shopping_bag),
-                label: Text('Orders'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.warehouse_outlined),
-                selectedIcon: Icon(Icons.warehouse),
-                label: Text('Inventory'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.notifications_none),
-                selectedIcon: Icon(Icons.notifications),
-                label: Text('Notifications'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: Text('Profile'),
-              ),
-            ],
+             destinations: const [
+               NavigationRailDestination(
+                 icon: Icon(Icons.dashboard_outlined),
+                 selectedIcon: Icon(Icons.dashboard),
+                 label: Text('Dashboard'),
+               ),
+               NavigationRailDestination(
+                 icon: Icon(Icons.shopping_bag_outlined),
+                 selectedIcon: Icon(Icons.shopping_bag),
+                 label: Text('Orders'),
+               ),
+               NavigationRailDestination(
+                 icon: Icon(Icons.warehouse_outlined),
+                 selectedIcon: Icon(Icons.warehouse),
+                 label: Text('Inventory'),
+               ),
+               NavigationRailDestination(
+                 icon: Icon(Icons.history_outlined),
+                 selectedIcon: Icon(Icons.history),
+                 label: Text('Stock Movements'),
+               ),
+               NavigationRailDestination(
+                 icon: Icon(Icons.point_of_sale_outlined),
+                 selectedIcon: Icon(Icons.point_of_sale),
+                 label: Text('POS'),
+               ),
+               NavigationRailDestination(
+                 icon: Icon(Icons.support_agent_outlined),
+                 selectedIcon: Icon(Icons.support_agent),
+                 label: Text('Support'),
+               ),
+               NavigationRailDestination(
+                 icon: Icon(Icons.notifications_none),
+                 selectedIcon: Icon(Icons.notifications),
+                 label: Text('Notifications'),
+               ),
+               NavigationRailDestination(
+                 icon: Icon(Icons.person_outline),
+                 selectedIcon: Icon(Icons.person),
+                 label: Text('Profile'),
+               ),
+             ],
           ),
           const VerticalDivider(width: 1),
           Expanded(

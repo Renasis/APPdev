@@ -17,11 +17,10 @@ class _CreateStaffScreenState extends State<CreateStaffScreen> {
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
 
-  String selectedRole = 'Staff';
+  String selectedRole = 'staff';
 
   final List<String> roles = [
-    'Staff',
-    'Manager',
+    'staff',
   ];
 
   @override

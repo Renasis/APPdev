@@ -20,6 +20,7 @@ class DeliveryDetails {
 
 class OrderModel {
   final String id;
+  final String customerId;
   final String customerName;
   final String phoneNumber;
   final String deliveryAddress;
@@ -31,9 +32,11 @@ class OrderModel {
   final DeliveryDetails? deliveryDetails;
   final DateTime orderDate;
   final String status;
+  final String orderType;
 
   OrderModel({
     required this.id,
+    required this.customerId,
     required this.customerName,
     required this.phoneNumber,
     required this.deliveryAddress,
@@ -45,5 +48,6 @@ class OrderModel {
     this.deliveryDetails,
     required this.orderDate,
     required this.status,
+    this.orderType = 'online',
   });
 }

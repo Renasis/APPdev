@@ -436,18 +436,19 @@ class ReportsDashboardScreen extends StatelessWidget {
                     title: const Text(
                       'Top Customer',
                     ),
-                    trailing: Text(
-                      customerProvider
-                          .customers
-                          .reduce(
-                            (a, b) =>
-                                a.totalSpent >
-                                        b.totalSpent
-                                    ? a
-                                    : b,
-                          )
-                          .name,
-                    ),
+                      trailing: customerProvider.customers.isEmpty
+                          ? const Text('N/A')
+                          : Text(
+                              customerProvider.customers
+                                  .reduce(
+                                    (a, b) =>
+                                        a.totalSpent >
+                                                b.totalSpent
+                                            ? a
+                                            : b,
+                                  )
+                                  .name,
+                            ),
                   ),
                 ],
               ),

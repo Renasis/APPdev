@@ -6,6 +6,7 @@ class AuthUserModel {
   final String email;
   final String phone;
   final UserRole role;
+  final bool isActive;
 
   const AuthUserModel({
     required this.id,
@@ -13,5 +14,6 @@ class AuthUserModel {
     required this.email,
     required this.phone,
     this.role = UserRole.customer,
+    this.isActive = true,
   });
 }

@@ -4,18 +4,18 @@ import 'package:pc_parts_application/features/admin/notifications/providers/noti
     as admin_notifications;
 
 void main() {
-  test('stock-in resolves a critical alert and records a Stock In movement', () {
+  test('stock-in resolves a critical alert and records a Stock In movement', () async {
     final notifications = admin_notifications.NotificationProvider();
     final inventory = InventoryProvider();
-    inventory.setNotificationProvider(notifications);
+    await inventory.setNotificationProvider(notifications);
 
-    inventory.updateStock('2', 2);
+    await inventory.updateStock('2', 2);
 
     expect(inventory.items[1].stock, 2);
     expect(notifications.unreadCount, 1);
     expect(notifications.notifications.single.id, 'critical-stock-2');
 
-    final added = inventory.addStock(
+    final added = await inventory.addStock(
       '2',
       4,
       reason: 'Purchase Order Received',

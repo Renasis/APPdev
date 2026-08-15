@@ -12,6 +12,7 @@ void main() {
     final notifications = StaffNotificationProvider();
 
     orders.placeOrder(
+      customerId: 'test-customer-id',
       customerName: 'Test Customer',
       phoneNumber: '09123456789',
       deliveryAddress: 'Test Address',
@@ -64,6 +65,7 @@ void main() {
     final notifications = StaffNotificationProvider();
 
     orders.placeOrder(
+      customerId: 'test-customer-id',
       customerName: 'Test Customer',
       phoneNumber: '09123456789',
       deliveryAddress: 'Test Address',

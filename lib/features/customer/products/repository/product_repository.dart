@@ -30,10 +30,34 @@ class ProductRepository {
     return _collection.doc(id).delete();
   }
 
+  Future<ProductModel?> fetchProduct(String id) {
+    return _collection.doc(id).get().then((doc) {
+      if (!doc.exists) return null;
+      return _documentToProduct(doc);
+    });
+  }
+
   ProductModel _toProduct(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
   ) {
     final data = document.data();
+
+    return ProductModel(
+      id: document.id,
+      name: data['name'] as String? ?? '',
+      category: data['category'] as String? ?? '',
+      brand: data['brand'] as String? ?? '',
+      price: (data['price'] as num? ?? 0).toDouble(),
+      image: data['image'] as String? ?? '',
+      stock: (data['stock'] as num? ?? 0).toInt(),
+      description: data['description'] as String? ?? '',
+    );
+  }
+
+  ProductModel _documentToProduct(
+    DocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data() ?? const {};
 
     return ProductModel(
       id: document.id,

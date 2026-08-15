@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/admin_settings_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../inventory/providers/inventory_provider.dart';
+import '../../../authentication/providers/auth_provider.dart';
+import '../../../../core/routes/route_names.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -24,32 +27,39 @@ class _AdminSettingsScreenState
   String currency = 'PHP';
 
   @override
+  void initState() {
+    super.initState();
+    storeController = TextEditingController();
+    emailController = TextEditingController();
+    phoneController = TextEditingController();
+    addressController = TextEditingController();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
     final settings =
         context.read<AdminSettingsProvider>().settings;
 
-    storeController = TextEditingController(
-      text: settings.storeName,
-    );
-
-    emailController = TextEditingController(
-      text: settings.email,
-    );
-
-    phoneController = TextEditingController(
-      text: settings.phone,
-    );
-
-    addressController = TextEditingController(
-      text: settings.address,
-    );
+    storeController.text = settings.storeName;
+    emailController.text = settings.email;
+    phoneController.text = settings.phone;
+    addressController.text = settings.address;
 
     notificationsEnabled =
         settings.notificationsEnabled;
 
     currency = settings.currency;
+  }
+
+  @override
+  void dispose() {
+    storeController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    addressController.dispose();
+    super.dispose();
   }
 
   @override
@@ -175,6 +185,23 @@ class _AdminSettingsScreenState
                 child: const Text(
                   'Save Settings',
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final auth = context.read<AuthProvider>();
+                  await auth.logout();
+                  if (mounted) {
+                    context.go(RouteNames.roleSelection);
+                  }
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('Logout'),
               ),
             ),
           ],

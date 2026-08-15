@@ -35,7 +35,7 @@ class _AddProductScreenState
     super.dispose();
   }
 
-  void saveProduct() {
+  Future<void> saveProduct() async {
     if (nameController.text.isEmpty ||
         categoryController.text.isEmpty ||
         priceController.text.isEmpty ||
@@ -57,11 +57,15 @@ class _AddProductScreenState
           );
 
     context.read<AdminProductProvider>().addProduct(product);
-    context.read<InventoryProvider>().addInventoryItem(
+    await context.read<InventoryProvider>().addInventoryItem(
           id: id,
           productName: product.name,
           stock: stock,
         );
+
+    if (!context.mounted) {
+      return;
+    }
 
     Navigator.pop(context);
   }

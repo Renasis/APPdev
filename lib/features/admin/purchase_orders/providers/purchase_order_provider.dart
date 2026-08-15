@@ -1,130 +1,113 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-class PurchaseOrderItem {
-  final String productId;
-  final String productName;
-  final double unitPrice;
-  final int quantity;
+import '../repository/purchase_order_repository.dart';
 
-  PurchaseOrderItem({
-    required this.productId,
-    required this.productName,
-    required this.unitPrice,
-    required this.quantity,
-  });
-
-  double get total => unitPrice * quantity;
-}
-
-class PurchaseOrder {
-  final String id;
-  final String supplierName;
-  final String status;
-  final List<PurchaseOrderItem> items;
-
-  PurchaseOrder({
-    required this.id,
-    required this.supplierName,
-    required this.status,
-    required this.items,
-  });
-
-  double get totalAmount {
-    return items.fold(
-      0,
-      (sum, item) => sum + item.total,
-    );
-  }
-}
+export '../repository/purchase_order_repository.dart';
 
 class PurchaseOrderProvider extends ChangeNotifier {
-  final List<PurchaseOrder> _purchaseOrders = [
-    PurchaseOrder(
-      id: 'PO-001',
-      supplierName: 'TechSource PH',
-      status: 'Draft',
-      items: [
-        PurchaseOrderItem(
-          productId: '1',
-          productName: 'RTX 4060',
-          unitPrice: 18999,
-          quantity: 2,
-        ),
-      ],
-    ),
+  PurchaseOrderProvider({PurchaseOrderRepository? repository})
+      : _repository = repository {
+    if (repository == null) {
+      return;
+    }
 
-    PurchaseOrder(
-      id: 'PO-002',
-      supplierName: 'PC Express Supplier',
-      status: 'Ordered',
-      items: [
-        PurchaseOrderItem(
-          productId: '2',
-          productName: 'Ryzen 7 7800X3D',
-          unitPrice: 19999,
-          quantity: 6,
-        ),
-      ],
-    ),
-  ];
-
-  List<PurchaseOrder> get purchaseOrders =>
-      _purchaseOrders;
-
-  void addPurchaseOrder(
-    PurchaseOrder order,
-  ) {
-    _purchaseOrders.add(order);
-    notifyListeners();
-  }
-
-  void updateStatus(
-  String id,
-  String newStatus,
-) {
-  final index = _purchaseOrders.indexWhere(
-    (order) => order.id == id,
-  );
-
-  if (index == -1) {
-    return;
-  }
-
-  final currentStatus =
-      _purchaseOrders[index].status;
-
-  const allowedTransitions = {
-    'Draft': 'Submitted',
-    'Submitted': 'Approved',
-    'Approved': 'Ordered',
-    'Ordered': 'Received',
-    'Received': 'Completed',
-  };
-
-  if (allowedTransitions[currentStatus] !=
-      newStatus) {
-    return;
-  }
-
-  final order = _purchaseOrders[index];
-
-  _purchaseOrders[index] = PurchaseOrder(
-    id: order.id,
-    supplierName: order.supplierName,
-    status: newStatus,
-    items: order.items,
-  );
-
-  notifyListeners();
-}
-
-  void deletePurchaseOrder(
-    String id,
-  ) {
-    _purchaseOrders.removeWhere(
-      (order) => order.id == id,
+    _subscription = repository.watchPurchaseOrders().listen(
+      _onPurchaseOrders,
+      onError: _onError,
     );
+  }
+
+  final PurchaseOrderRepository? _repository;
+
+  StreamSubscription<List<PurchaseOrder>>? _subscription;
+
+  final List<PurchaseOrder> _purchaseOrders = [];
+
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  List<PurchaseOrder> get purchaseOrders => List.unmodifiable(_purchaseOrders);
+
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  void _onPurchaseOrders(List<PurchaseOrder> orders) {
+    _purchaseOrders
+      ..clear()
+      ..addAll(orders);
+    _isLoading = false;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _onError(Object error) {
+    _isLoading = false;
+    _errorMessage = 'Could not load purchase orders.';
+    notifyListeners();
+  }
+
+  Future<void> addPurchaseOrder(PurchaseOrder order) async {
+    try {
+      await _repository?.createPurchaseOrder(order);
+      _errorMessage = null;
+    } catch (error) {
+      _errorMessage = 'Failed to create purchase order.';
+    }
 
     notifyListeners();
+  }
+
+  Future<void> updateStatus(String id, String newStatus) async {
+    final index = _purchaseOrders.indexWhere((order) => order.id == id);
+    if (index == -1) return;
+
+    final currentStatus = _purchaseOrders[index].status;
+
+    const allowedTransitions = {
+      'Draft': 'Submitted',
+      'Submitted': 'Approved',
+      'Approved': 'Ordered',
+      'Ordered': 'Received',
+      'Received': 'Completed',
+    };
+
+    if (allowedTransitions[currentStatus] != newStatus) {
+      return;
+    }
+
+    try {
+      await _repository?.updatePurchaseOrderStatus(id, newStatus);
+      _purchaseOrders[index] = PurchaseOrder(
+        id: _purchaseOrders[index].id,
+        supplierName: _purchaseOrders[index].supplierName,
+        status: newStatus,
+        items: _purchaseOrders[index].items,
+        createdAt: _purchaseOrders[index].createdAt,
+      );
+      _errorMessage = null;
+    } catch (error) {
+      _errorMessage = 'Failed to update purchase order status.';
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> deletePurchaseOrder(String id) async {
+    try {
+      await _repository?.deletePurchaseOrder(id);
+      _errorMessage = null;
+    } catch (error) {
+      _errorMessage = 'Failed to delete purchase order.';
+    }
+
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }

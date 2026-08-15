@@ -9,6 +9,7 @@ import 'order_success_screen.dart';
 import 'payment_method_screen.dart';
 import '../../address/screens/address_list_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
+import '../../../authentication/providers/auth_provider.dart';
 
 
 class CheckoutScreen extends StatelessWidget {
@@ -310,22 +311,28 @@ class CheckoutScreen extends StatelessWidget {
                           return;
                         }
 
+                        final authProvider = Provider.of<AuthProvider>(
+                          context,
+                          listen: false,
+                        );
+
                         Provider.of<OrderProvider>(
-  context,
-  listen: false,
-).placeOrder(
-  customerName: selectedName,
-  phoneNumber: selectedPhone,
-  deliveryAddress: selectedAddress,
-  items: List.from(
-    cartProvider.items,
-  ),
-  totalAmount:
-      cartProvider.totalAmount,
-  paymentMethod:
-      checkout.paymentMethod,
-  paymentReference: checkout.paymentReference,
-);
+   context,
+   listen: false,
+ ).placeOrder(
+   customerId: authProvider.currentUser?.id ?? '',
+   customerName: selectedName,
+   phoneNumber: selectedPhone,
+   deliveryAddress: selectedAddress,
+   items: List.from(
+     cartProvider.items,
+   ),
+   totalAmount:
+       cartProvider.totalAmount,
+   paymentMethod:
+       checkout.paymentMethod,
+   paymentReference: checkout.paymentReference,
+ );
 
 Provider.of<NotificationProvider>(
   context,

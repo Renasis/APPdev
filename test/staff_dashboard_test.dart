@@ -13,6 +13,7 @@ void main() {
     final inventory = InventoryProvider();
 
     orders.placeOrder(
+      customerId: 'test-customer-id',
       customerName: 'Test Customer',
       phoneNumber: '09123456789',
       deliveryAddress: 'Test Address',

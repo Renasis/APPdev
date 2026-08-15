@@ -60,7 +60,7 @@ class _EditProductScreenState
     super.dispose();
   }
 
-  void updateProduct() {
+  Future<void> updateProduct() async {
     final updatedProduct = AdminProduct(
             id: widget.product.id,
             name: nameController.text,
@@ -76,11 +76,15 @@ class _EditProductScreenState
 
     context.read<AdminProductProvider>().updateProduct(updatedProduct);
     final inventoryProvider = context.read<InventoryProvider>();
-    inventoryProvider.updateInventoryItemName(
+    await inventoryProvider.updateInventoryItemName(
       updatedProduct.id,
       updatedProduct.name,
     );
-    inventoryProvider.updateStock(updatedProduct.id, updatedProduct.stock);
+    await inventoryProvider.updateStock(updatedProduct.id, updatedProduct.stock);
+
+    if (!context.mounted) {
+      return;
+    }
 
     Navigator.pop(context);
   }

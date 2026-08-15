@@ -4,9 +4,9 @@ import 'package:pc_parts_application/features/customer/cart/providers/cart_provi
 import 'package:pc_parts_application/features/customer/products/models/product_model.dart';
 
 void main() {
-  test('cart uses current inventory instead of the product stock snapshot', () {
+  test('cart uses current inventory instead of the product stock snapshot', () async {
     final inventory = InventoryProvider();
-    inventory.updateStock('1', 1);
+    await inventory.updateStock('1', 1);
 
     final cart = CartProvider()..setInventoryProvider(inventory);
     const product = ProductModel(
@@ -24,7 +24,7 @@ void main() {
     expect(cart.addToCart(product), isFalse);
     expect(cart.items.single.quantity, 1);
 
-    inventory.updateStock('1', 0);
+    await inventory.updateStock('1', 0);
 
     expect(cart.stockShortages, hasLength(1));
     expect(cart.stockShortages.single.productName, 'RTX 4060');

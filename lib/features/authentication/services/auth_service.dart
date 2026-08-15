@@ -32,6 +32,8 @@ abstract interface class AuthService {
   Future<void> sendPasswordResetEmail(String email);
 
   Future<void> signOut();
+
+  Future<void> ensureTokenFresh();
 }
 
 class FirebaseAuthService implements AuthService {
@@ -61,6 +63,13 @@ class FirebaseAuthService implements AuthService {
     });
   }
 
+  Future<void> ensureTokenFresh() async {
+    final user = _firebaseAuth.currentUser;
+    if (user != null) {
+      await user.getIdToken(true);
+    }
+  }
+
   @override
   Future<AuthUserModel> register({
     required String fullName,
@@ -76,6 +85,8 @@ class FirebaseAuthService implements AuthService {
 
       final user = credential.user!;
       await user.updateDisplayName(fullName.trim());
+
+      await user.getIdToken(true);
 
       return AuthUserModel(
         id: user.uid,

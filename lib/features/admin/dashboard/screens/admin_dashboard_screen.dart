@@ -11,6 +11,8 @@ import '../../inventory/screens/inventory_screen.dart';
 import '../../inventory/screens/stock_out_screen.dart';
 import '../../settings/screens/admin_settings_screen.dart';
 import '../../inventory/providers/inventory_provider.dart';
+import '../../purchase_orders/providers/purchase_order_provider.dart';
+import '../../../customer/orders/providers/order_provider.dart';
 
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -252,63 +254,67 @@ class AdminDashboardScreen extends StatelessWidget {
                       label: const Text('Settings'),
                     ),
 
-                    const SizedBox(height: 20),
+                     const SizedBox(height: 20),
 
-                    const _DashboardSection(
-                      title: 'Recent Activities',
+                     _DashboardSection(
+                       title: 'Recent Activities',
+                       child: Consumer4<
+                         OrderProvider,
+                         InventoryProvider,
+                         PurchaseOrderProvider,
+                         SalesProvider
+                       >(
+                         builder: (
+                           context,
+                           orderProvider,
+                           inventoryProvider,
+                           purchaseOrderProvider,
+                           salesProvider,
+                           child,
+                         ) {
+                           final activities = <_Activity>[];
 
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading:
-                                Icon(
-                              Icons.receipt_long,
-                            ),
+                           for (final order in salesProvider.completedOrders.take(3)) {
+                             activities.add(_Activity(
+                               icon: Icons.shopping_bag,
+                               label: 'Order #${order.id} completed',
+                             ));
+                           }
 
-                            title:
-                                Text(
-                              'PO-003 created',
-                            ),
-                          ),
+                           for (final movement in inventoryProvider.movements.take(3)) {
+                             activities.add(_Activity(
+                               icon: movement.type == 'Stock In'
+                                   ? Icons.arrow_downward
+                                   : Icons.arrow_upward,
+                               label: '${movement.productName} ${movement.type}',
+                             ));
+                           }
 
-                          ListTile(
-                            leading:
-                                Icon(
-                              Icons.inventory,
-                            ),
+                           for (final po in purchaseOrderProvider.purchaseOrders.take(2)) {
+                             activities.add(_Activity(
+                               icon: Icons.receipt_long,
+                               label: 'PO ${po.id} ${po.status}',
+                             ));
+                           }
 
-                            title:
-                                Text(
-                              'RTX 4060 stock received',
-                            ),
-                          ),
+                           if (activities.isEmpty) {
+                             return const ListTile(
+                               leading: Icon(Icons.info_outline),
+                               title: Text('No recent activity.'),
+                             );
+                           }
 
-                          ListTile(
-                            leading:
-                                Icon(
-                              Icons.person_add,
-                            ),
-
-                            title:
-                                Text(
-                              'Staff account created',
-                            ),
-                          ),
-
-                          ListTile(
-                            leading:
-                                Icon(
-                              Icons.shopping_bag,
-                            ),
-
-                            title:
-                                Text(
-                              'Customer order completed',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                           return Column(
+                             children: activities.map((activity) {
+                               return ListTile(
+                                 leading: Icon(activity.icon),
+                                 title: Text(activity.label),
+                               );
+                             }).toList(),
+                           );
+                         },
+                       ),
+                     ),
                   ],
                 ),
               ),
@@ -354,44 +360,59 @@ class AdminDashboardScreen extends StatelessWidget {
 
                       child: Column(
                         children: [
-                          ListTile(
-                            title:
-                                const Text(
-                              'Today',
-                            ),
+                           ListTile(
+                             title:
+                                 const Text(
+                               'Today',
+                             ),
 
-                            trailing:
-                                Text(
-                              '₱${salesProvider.todaySales.toStringAsFixed(0)}',
-                            ),
-                          ),
+                             trailing:
+                                 SizedBox(
+                               width: 120,
+                               child: Text(
+                                 '₱${salesProvider.todaySales.toStringAsFixed(0)}',
+                                 overflow: TextOverflow.ellipsis,
+                                 textAlign: TextAlign.end,
+                               ),
+                             ),
+                           ),
 
-                          ListTile(
-                            title:
-                                const Text(
-                              'Top Product',
-                            ),
+                           ListTile(
+                             title:
+                                 const Text(
+                               'Top Product',
+                             ),
 
-                            trailing:
-                                Text(
-                              salesProvider
-                                  .topProduct,
-                            ),
-                          ),
+                             trailing:
+                                 SizedBox(
+                               width: 120,
+                               child: Text(
+                                 salesProvider
+                                     .topProduct,
+                                 overflow: TextOverflow.ellipsis,
+                                 textAlign: TextAlign.end,
+                               ),
+                             ),
+                           ),
 
-                          ListTile(
-                            title:
-                                const Text(
-                              'Units Sold',
-                            ),
+                           ListTile(
+                             title:
+                                 const Text(
+                               'Units Sold',
+                             ),
 
-                            trailing:
-                                Text(
-                              salesProvider
-                                  .totalUnitsSold
-                                  .toString(),
-                            ),
-                          ),
+                             trailing:
+                                 SizedBox(
+                               width: 120,
+                               child: Text(
+                                 salesProvider
+                                     .totalUnitsSold
+                                     .toString(),
+                                 overflow: TextOverflow.ellipsis,
+                                 textAlign: TextAlign.end,
+                               ),
+                             ),
+                           ),
                         ],
                       ),
                     ),
@@ -403,60 +424,75 @@ class AdminDashboardScreen extends StatelessWidget {
 
                       child: Column(
                         children: [
-                          ListTile(
-                            leading:
-                                const Icon(
-                              Icons.star_outline,
-                            ),
+                           ListTile(
+                             leading:
+                                 const Icon(
+                               Icons.star_outline,
+                             ),
 
-                            title:
-                                const Text(
-                              'Best Seller',
-                            ),
+                             title:
+                                 const Text(
+                               'Best Seller',
+                             ),
 
-                            trailing:
-                                Text(
-                              salesProvider
-                                  .bestSellingProduct
-                                  .productName,
-                            ),
-                          ),
+                             trailing:
+                                 SizedBox(
+                               width: 120,
+                               child: Text(
+                                 salesProvider
+                                     .bestSellingProduct
+                                     .productName,
+                                 overflow: TextOverflow.ellipsis,
+                                 textAlign: TextAlign.end,
+                               ),
+                             ),
+                           ),
 
-                          ListTile(
-                            leading:
-                                const Icon(
-                              Icons.attach_money,
-                            ),
+                           ListTile(
+                             leading:
+                                 const Icon(
+                               Icons.attach_money,
+                             ),
 
-                            title:
-                                const Text(
-                              'Avg Order Value',
-                            ),
+                             title:
+                                 const Text(
+                               'Avg Order Value',
+                             ),
 
-                            trailing:
-                                Text(
-                              '₱${salesProvider.averageOrderValue.toStringAsFixed(0)}',
-                            ),
-                          ),
+                             trailing:
+                                 SizedBox(
+                               width: 120,
+                               child: Text(
+                                 '₱${salesProvider.averageOrderValue.toStringAsFixed(0)}',
+                                 overflow: TextOverflow.ellipsis,
+                                 textAlign: TextAlign.end,
+                               ),
+                             ),
+                           ),
 
-                          ListTile(
-                            leading:
-                                const Icon(
-                              Icons.shopping_bag_outlined,
-                            ),
+                           ListTile(
+                             leading:
+                                 const Icon(
+                               Icons.shopping_bag_outlined,
+                             ),
 
-                            title:
-                                const Text(
-                              'Total Units Sold',
-                            ),
+                             title:
+                                 const Text(
+                               'Total Units Sold',
+                             ),
 
-                            trailing:
-                                Text(
-                              salesProvider
-                                  .totalUnitsSold
-                                  .toString(),
-                            ),
-                          ),
+                             trailing:
+                                 SizedBox(
+                               width: 120,
+                               child: Text(
+                                 salesProvider
+                                     .totalUnitsSold
+                                     .toString(),
+                                 overflow: TextOverflow.ellipsis,
+                                 textAlign: TextAlign.end,
+                               ),
+                             ),
+                           ),
                         ],
                       ),
                     ),
@@ -602,10 +638,21 @@ class _DashboardSection
               height: 16,
             ),
 
-            child,
+             child,
           ],
         ),
       ),
     );
   }
 }
+
+class _Activity {
+  final IconData icon;
+  final String label;
+
+  _Activity({
+    required this.icon,
+    required this.label,
+  });
+}
+

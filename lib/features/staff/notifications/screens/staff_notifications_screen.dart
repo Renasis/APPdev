@@ -86,11 +86,13 @@ class _NotificationIcon extends StatelessWidget {
       StaffNotificationType.newOrder => Icons.shopping_bag_outlined,
       StaffNotificationType.lowStock => Icons.warning_amber_outlined,
       StaffNotificationType.criticalStock => Icons.error_outline,
+      StaffNotificationType.system => Icons.notifications_outlined,
     };
     final color = switch (type) {
       StaffNotificationType.newOrder => Colors.blue,
       StaffNotificationType.lowStock => Colors.orange,
       StaffNotificationType.criticalStock => Colors.red,
+      StaffNotificationType.system => Colors.grey,
     };
 
     return CircleAvatar(

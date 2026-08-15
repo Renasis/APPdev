@@ -203,7 +203,11 @@ class SalesDashboardScreen extends StatelessWidget {
                   ],
                 ),
 
-                Expanded(
+                const SizedBox(height: 12),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
                   child: ElevatedButton.icon(
                     icon: const Icon(
                       Icons.assessment_outlined,

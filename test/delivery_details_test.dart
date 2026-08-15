@@ -8,6 +8,7 @@ void main() {
   test('shipping stores delivery details and preserves them on completion', () {
     final orders = OrderProvider();
     orders.placeOrder(
+      customerId: 'test-customer-id',
       customerName: 'Test Customer',
       phoneNumber: '09123456789',
       deliveryAddress: 'Test Address',

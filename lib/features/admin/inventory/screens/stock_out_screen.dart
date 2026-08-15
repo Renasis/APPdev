@@ -64,87 +64,90 @@ class _StockOutScreenState
     ).toList();
   }
 
-  void recordStockOut() {
-  if (selectedProduct == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Please select a product.',
+  Future<void> recordStockOut() async {
+    if (selectedProduct == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please select a product.',
+          ),
         ),
-      ),
+      );
+
+      return;
+    }
+
+    final quantity =
+        int.tryParse(quantityController.text);
+
+    if (quantity == null || quantity <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enter a valid quantity to deduct.',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final provider =
+        context.read<InventoryProvider>();
+
+    final previousStock =
+        selectedProduct!.stock;
+
+    final success = await provider.deductStock(
+      selectedProduct!.id,
+      quantity,
     );
 
-    return;
-  }
-
-  final quantity =
-      int.tryParse(quantityController.text);
-
-  if (quantity == null || quantity <= 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Enter a valid quantity to deduct.',
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Insufficient stock. Available: $previousStock',
+          ),
         ),
-      ),
+      );
+
+      return;
+    }
+
+    final newStock =
+        previousStock - quantity;
+
+    final movement = StockMovement(
+      id: 'SM-${DateTime.now().millisecondsSinceEpoch}',
+      productId: selectedProduct!.id,
+      productName: selectedProduct!.productName,
+      quantity: quantity,
+      previousStock: previousStock,
+      newStock: newStock,
+      reason: selectedReason,
+      notes: notesController.text.trim(),
+      date: DateTime.now(),
+      type: 'Stock Out',
+      performedByUid: '',
+      performedByName: '',
+      performedByRole: '',
     );
 
-    return;
-  }
+    provider.addStockMovement(
+      movement,
+    );
 
-  final provider =
-      context.read<InventoryProvider>();
-
-  final previousStock =
-      selectedProduct!.stock;
-
-  final success = provider.deductStock(
-    selectedProduct!.id,
-    quantity,
-  );
-
-  if (!success) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Insufficient stock. Available: $previousStock',
+          '${selectedProduct!.productName}: $quantity unit(s) deducted.',
         ),
       ),
     );
 
-    return;
+    Navigator.pop(context);
   }
-
-  final newStock =
-      previousStock - quantity;
-
-  final movement = StockMovement(
-    id: 'SM-${DateTime.now().millisecondsSinceEpoch}',
-    productId: selectedProduct!.id,
-    productName: selectedProduct!.productName,
-    quantity: quantity,
-    previousStock: previousStock,
-    newStock: newStock,
-    reason: selectedReason,
-    notes: notesController.text.trim(),
-    date: DateTime.now(),
-    type: 'Stock Out',
-  );
-
-  provider.addStockMovement(
-    movement,
-  );
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        '${selectedProduct!.productName}: $quantity unit(s) deducted.',
-      ),
-    ),
-  );
-
-  Navigator.pop(context);
-}
 
   @override
   Widget build(BuildContext context) {

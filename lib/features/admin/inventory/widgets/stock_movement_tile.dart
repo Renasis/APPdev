@@ -61,6 +61,16 @@ class StockMovementTile extends StatelessWidget {
               Text(
                 'Stock: ${movement.previousStock} → ${movement.newStock}',
               ),
+              if (movement.performedByName.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'By: ${movement.performedByName} (${movement.performedByRole})',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
               if (movement.notes.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(

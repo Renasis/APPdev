@@ -5,6 +5,7 @@ import 'package:pc_parts_application/features/authentication/models/auth_user_mo
 import 'package:pc_parts_application/features/authentication/providers/auth_provider.dart';
 import 'package:pc_parts_application/features/authentication/services/auth_service.dart';
 import 'package:pc_parts_application/features/authentication/services/user_service.dart';
+import 'package:pc_parts_application/features/admin/staff/services/staff_account_service.dart';
 import 'package:pc_parts_application/core/enums/user_role.dart';
 
 class _FakeAuthService implements AuthService {
@@ -64,6 +65,9 @@ class _FakeAuthService implements AuthService {
     _controller.add(null);
   }
 
+  @override
+  Future<void> ensureTokenFresh() async {}
+
   AuthUserModel _authenticate(AuthUserModel user) {
     if (failWith != null) {
       throw AuthException(failWith!);
@@ -107,6 +111,70 @@ class _FakeUserService implements UserService {
 
   @override
   Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {}
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchCustomers() async* {}
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchCustomers() async => [];
+}
+
+class _FakeStaffAccountService implements StaffAccountService {
+  const _FakeStaffAccountService();
+
+  @override
+  Future<Map<String, dynamic>> createStaffAccount({
+    required String name,
+    required String email,
+    required String phone,
+  }) async {
+    return {'success': true};
+  }
+
+  @override
+  Future<void> activateStaffAccount({
+    required String uid,
+    required String email,
+  }) async {}
+
+  @override
+  Future<Map<String, dynamic>> disableStaffAccount(String uid) async {
+    return {'success': true};
+  }
+
+  @override
+  Future<Map<String, dynamic>> enableStaffAccount(String uid) async {
+    return {'success': true};
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteStaffAccount(String uid) async {
+    return {'success': true};
+  }
+
+  @override
+  Future<void> updateStaffProfile(
+    String uid,
+    Map<String, dynamic> data,
+  ) async {}
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchStaffAccounts() =>
+      const Stream.empty();
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchStaffAccounts() async => [];
+
+  @override
+  Future<Map<String, dynamic>?> fetchStaffAccount(String uid) async => null;
+
+  @override
+  Future<Map<String, dynamic>?> fetchPendingInvitation(String email) async =>
+      null;
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchPendingInvitations() =>
+      const Stream.empty();
 }
 
 void main() {
@@ -114,6 +182,7 @@ void main() {
     final provider = AuthProvider(
       _FakeAuthService(),
       _FakeUserService(),
+      _FakeStaffAccountService(),
     );
 
     expect(
@@ -131,6 +200,7 @@ void main() {
     final provider = AuthProvider(
       _FakeAuthService(),
       _FakeUserService(),
+      _FakeStaffAccountService(),
     );
 
     await provider.register(
@@ -147,6 +217,7 @@ void main() {
     final provider = AuthProvider(
       _FakeAuthService(failWith: 'Incorrect email or password.'),
       _FakeUserService(),
+      _FakeStaffAccountService(),
     );
 
     expect(
@@ -163,6 +234,7 @@ void main() {
     final provider = AuthProvider(
       _FakeAuthService(),
       _FakeUserService(),
+      _FakeStaffAccountService(),
     );
     await provider.login(email: 'josh@example.com', password: 'secret');
 

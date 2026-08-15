@@ -28,6 +28,7 @@ class OrderRepository {
 
   Future<void> saveOrder(OrderModel order) {
     return _collection.doc(order.id).set({
+      'customerId': order.customerId,
       'customerName': order.customerName,
       'phoneNumber': order.phoneNumber,
       'deliveryAddress': order.deliveryAddress,
@@ -41,6 +42,7 @@ class OrderRepository {
           : _deliveryDetailsToMap(order.deliveryDetails!),
       'orderDate': Timestamp.fromDate(order.orderDate),
       'status': order.status,
+      'orderType': order.orderType,
     });
   }
 
@@ -53,6 +55,7 @@ class OrderRepository {
 
     return OrderModel(
       id: document.id,
+      customerId: data['customerId'] as String? ?? '',
       customerName: data['customerName'] as String? ?? '',
       phoneNumber: data['phoneNumber'] as String? ?? '',
       deliveryAddress: data['deliveryAddress'] as String? ?? '',
@@ -66,6 +69,7 @@ class OrderRepository {
           : _deliveryDetailsFromMap(deliveryDetails),
       orderDate: (data['orderDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       status: data['status'] as String? ?? '',
+      orderType: data['orderType'] as String? ?? 'online',
     );
   }
 

@@ -1,0 +1,22 @@
+{"users": [
+{
+  "localId": "DV0OrLXvnLeXMi2U3didWPIVwMo2",
+  "email": "admin1234@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "Q8iprFUHeRF44BHrV7o97nvYBhAliL2HhXEFLJ8CE6Cs9x9taNofS9Ce1DpfaeJePiSZjTeL1VvZ91EnKr/RAg==",
+  "salt": "xfukskEhLBqIWw==",
+  "createdAt": "1786641547364",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "zgtOSAWNp7VbWJUvB10BRti6Ypp1",
+  "email": "lascanoj41@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "4EZK9cfvxRb1JdXP8gpJV8sBEE10yXZacPE9zX2zj/jlcMqoMOLNvLm0OKVeshH3P/EIjVEjQOQaP9JVMhEYlQ==",
+  "salt": "tASK7s50Nxq/7A==",
+  "lastSignedInAt": "1786676540901",
+  "createdAt": "1786641428328",
+  "disabled": false,
+  "providerUserInfo": []
+}]}

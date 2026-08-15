@@ -59,10 +59,10 @@ void main() {
     final repository = InventoryRepository(firestore: firestore);
     final provider = InventoryProvider(repository: repository);
 
-    provider.addInventoryItem(id: 'gpu-1', productName: 'RTX 4060', stock: 4);
+    await provider.addInventoryItem(id: 'gpu-1', productName: 'RTX 4060', stock: 4);
     await Future<void>.delayed(Duration.zero);
 
-    expect(provider.addStock('gpu-1', 6), isTrue);
+    expect(await provider.addStock('gpu-1', 6), isTrue);
     await Future<void>.delayed(Duration.zero);
 
     final items = await repository.watchItems().first;
@@ -81,6 +81,7 @@ void main() {
       final provider = OrderProvider(repository: repository);
 
       provider.placeOrder(
+        customerId: 'test-customer-id',
         customerName: 'Josh',
         phoneNumber: '09171234567',
         deliveryAddress: 'Manila',
@@ -158,11 +159,12 @@ void main() {
     final orderRepository = OrderRepository(firestore: firestore);
 
     final inventory = InventoryProvider(repository: inventoryRepository);
-    inventory.addInventoryItem(id: 'gpu-1', productName: 'RTX 4060', stock: 10);
+    await inventory.addInventoryItem(id: 'gpu-1', productName: 'RTX 4060', stock: 10);
     await Future<void>.delayed(Duration.zero);
 
     final order = OrderModel(
       id: 'order-1',
+      customerId: 'test-customer-id',
       customerName: 'Josh',
       phoneNumber: '09171234567',
       deliveryAddress: 'Manila',
@@ -175,17 +177,15 @@ void main() {
     );
     await orderRepository.saveOrder(order);
 
-    inventory.syncCompletedOrders([order]);
+    await inventory.syncCompletedOrders([order]);
     await Future<void>.delayed(Duration.zero);
 
     expect((await inventoryRepository.watchItems().first).single.stock, 7);
 
-    // A fresh provider stands in for an app restart: the persisted movement
-    // must stop the same order from being deducted a second time.
     final restarted = InventoryProvider(repository: inventoryRepository);
     await Future<void>.delayed(Duration.zero);
 
-    restarted.syncCompletedOrders([order]);
+    await restarted.syncCompletedOrders([order]);
     await Future<void>.delayed(Duration.zero);
 
     expect((await inventoryRepository.watchItems().first).single.stock, 7);

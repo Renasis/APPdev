@@ -24,8 +24,7 @@ class _EditStaffScreenState extends State<EditStaffScreen> {
   late bool isActive;
 
   final List<String> roles = [
-    'Staff',
-    'Manager',
+    'staff',
   ];
 
   @override
@@ -69,6 +68,7 @@ class _EditStaffScreenState extends State<EditStaffScreen> {
       phone: phone,
       role: selectedRole,
       isActive: isActive,
+      status: isActive ? 'active' : 'inactive',
     );
 
     await context.read<StaffProvider>().updateStaff(updatedStaff);

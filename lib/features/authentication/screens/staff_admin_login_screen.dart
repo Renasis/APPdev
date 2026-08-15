@@ -210,6 +210,26 @@ class _StaffAdminLoginScreenState extends State<StaffAdminLoginScreen> {
                   ),
                 ),
               ),
+
+              if (!isAdminPortal) ...[
+                const SizedBox(height: 16),
+
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      context.push(RouteNames.staffRegister);
+                    },
+
+                    child: const Text(
+                      'Have a staff invitation? Create your account',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

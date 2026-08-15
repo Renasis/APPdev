@@ -47,6 +47,9 @@ class StockMovement {
   final String notes;
   final DateTime date;
   final String type;
+  final String performedByUid;
+  final String performedByName;
+  final String performedByRole;
 
   StockMovement({
     required this.id,
@@ -59,6 +62,9 @@ class StockMovement {
     required this.notes,
     required this.date,
     required this.type,
+    this.performedByUid = '',
+    this.performedByName = '',
+    this.performedByRole = '',
   });
 }
 
@@ -135,6 +141,9 @@ class InventoryProvider extends ChangeNotifier {
         const Duration(days: 1),
       ),
       type: 'Stock In',
+      performedByUid: '',
+      performedByName: '',
+      performedByRole: '',
     ),
   ];
 
@@ -143,6 +152,20 @@ class InventoryProvider extends ChangeNotifier {
   NotificationProvider? _notificationProvider;
 
   bool notificationsEnabled = true;
+
+  Map<String, String>? _performedBy;
+
+  void setPerformedBy({
+    required String uid,
+    required String name,
+    required String role,
+  }) {
+    _performedBy = {
+      'uid': uid,
+      'name': name,
+      'role': role,
+    };
+  }
 
   void setNotificationsEnabled(bool enabled) {
     if (notificationsEnabled == enabled) {
@@ -157,13 +180,13 @@ class InventoryProvider extends ChangeNotifier {
   // NOTIFICATION CONNECTION
   // ========================================
 
-  void setNotificationProvider(
+  Future<void> setNotificationProvider(
   NotificationProvider provider,
-) {
+) async {
   _notificationProvider = provider;
 
   for (final item in _items) {
-    _checkStockLevel(item);
+    await _checkStockLevel(item);
   }
 }
 
@@ -212,11 +235,15 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   void _persistItem(InventoryItem item) {
+    debugPrint('[INVENTORY] _persistItem started: id=${item.id}');
     unawaited(_repository?.saveItem(item) ?? Future<void>.value());
+    debugPrint('[INVENTORY] _persistItem fire-and-forget completed');
   }
 
   void _persistMovement(StockMovement movement) {
+    debugPrint('[INVENTORY] _persistMovement started: id=${movement.id}');
     unawaited(_repository?.saveMovement(movement) ?? Future<void>.value());
+    debugPrint('[INVENTORY] _persistMovement fire-and-forget completed');
   }
 
   @override
@@ -235,11 +262,68 @@ class InventoryProvider extends ChangeNotifier {
     return null;
   }
 
-  bool addInventoryItem({
+  Future<bool> createInventoryRecord({
+    required String productId,
+    required String productName,
+    required int initialStock,
+    String notes = '',
+  }) async {
+    debugPrint('[INVENTORY] createInventoryRecord started: productId=$productId initialStock=$initialStock');
+    if (initialStock <= 0 || itemById(productId) != null) {
+      debugPrint('[INVENTORY] createInventoryRecord rejected: invalid params or duplicate');
+      return false;
+    }
+
+    final item = InventoryItem(
+      id: productId,
+      productName: productName,
+      stock: initialStock,
+    );
+
+    final movementId = 'INITIAL-${DateTime.now().microsecondsSinceEpoch}-$productId';
+
+    try {
+      debugPrint('[INVENTORY] createInventoryRecord adding item to local list');
+      _items.add(item);
+      _persistItem(item);
+
+      debugPrint('[INVENTORY] createInventoryRecord recording movement');
+      _recordMovement(
+        _createStockMovement(
+          id: movementId,
+          productId: productId,
+          productName: productName,
+          quantity: initialStock,
+          previousStock: 0,
+          newStock: initialStock,
+          reason: 'Initial Inventory',
+          notes: notes,
+          date: DateTime.now(),
+          type: 'Stock In',
+        ),
+      );
+
+      debugPrint('[INVENTORY] createInventoryRecord checking stock level');
+      await _checkStockLevel(item);
+      debugPrint('[INVENTORY] createInventoryRecord stock level check completed');
+
+      notifyListeners();
+      debugPrint('[INVENTORY] createInventoryRecord completed: true');
+      return true;
+    } catch (error) {
+      debugPrint('[INVENTORY] createInventoryRecord FAILED: $error');
+      _items.removeWhere((i) => i.id == productId);
+      _movements.removeWhere((m) => m.id == movementId);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> addInventoryItem({
     required String id,
     required String productName,
     required int stock,
-  }) {
+  }) async {
     if (stock < 0 || itemById(id) != null) {
       return false;
     }
@@ -251,12 +335,12 @@ class InventoryProvider extends ChangeNotifier {
     );
     _items.add(item);
     _persistItem(item);
-    _checkStockLevel(item);
+    await _checkStockLevel(item);
     notifyListeners();
     return true;
   }
 
-  void updateInventoryItemName(String id, String productName) {
+  Future<void> updateInventoryItemName(String id, String productName) async {
     final item = itemById(id);
     if (item == null || item.productName == productName) {
       return;
@@ -264,11 +348,11 @@ class InventoryProvider extends ChangeNotifier {
 
     item.productName = productName;
     _persistItem(item);
-    _checkStockLevel(item);
+    await _checkStockLevel(item);
     notifyListeners();
   }
 
-  void removeInventoryItem(String id) {
+  Future<void> removeInventoryItem(String id) async {
     final item = itemById(id);
     if (item == null) {
       return;
@@ -276,7 +360,7 @@ class InventoryProvider extends ChangeNotifier {
 
     _items.remove(item);
     unawaited(_repository?.deleteItem(id) ?? Future<void>.value());
-    _notificationProvider?.syncStockLevelNotification(
+    await _notificationProvider?.syncStockLevelNotification(
       productId: id,
       productName: item.productName,
       stock: 6,
@@ -323,32 +407,36 @@ class InventoryProvider extends ChangeNotifier {
   // CHECK STOCK LEVEL
   // ========================================
 
-  void _checkStockLevel(
+  Future<void> _checkStockLevel(
     InventoryItem item,
-  ) {
+  ) async {
+    debugPrint('[INVENTORY] _checkStockLevel started: productId=${item.id} stock=${item.stock}');
     final notificationProvider =
         _notificationProvider;
 
     if (notificationProvider == null ||
         !notificationsEnabled) {
+      debugPrint('[INVENTORY] _checkStockLevel skipped: no notification provider or disabled');
       return;
     }
 
-    notificationProvider.syncStockLevelNotification(
+    debugPrint('[INVENTORY] _checkStockLevel calling syncStockLevelNotification');
+    await notificationProvider.syncStockLevelNotification(
       productId: item.id,
       productName: item.productName,
       stock: item.stock,
     );
-}
+    debugPrint('[INVENTORY] _checkStockLevel completed');
+  }
 
   // ========================================
   // UPDATE STOCK
   // ========================================
 
-  void updateStock(
+  Future<void> updateStock(
     String id,
     int newStock,
-  ) {
+  ) async {
     final index = _items.indexWhere(
       (item) => item.id == id,
     );
@@ -364,7 +452,7 @@ class InventoryProvider extends ChangeNotifier {
     _items[index].stock = newStock;
     _persistItem(_items[index]);
 
-    _checkStockLevel(
+    await _checkStockLevel(
       _items[index],
     );
 
@@ -375,18 +463,18 @@ class InventoryProvider extends ChangeNotifier {
   // DEDUCT STOCK FOR COMPLETED ORDERS
   // ========================================
 
-  void syncCompletedOrders(
+  Future<void> syncCompletedOrders(
     List<OrderModel> orders,
-  ) {
+  ) async {
     var inventoryChanged = false;
 
     for (final order in orders) {
       if (order.status != 'Completed' ||
-          _stockDeductedOrderIds.contains(order.id)) {
+          _stockDeductedOrderIds.contains(order.id) ||
+          order.orderType == 'walk_in') {
         continue;
       }
 
-      // Combine duplicate products in one order before deducting stock.
       final quantitiesByProductId = <String, int>{};
       final productNames = <String, String>{};
 
@@ -400,7 +488,6 @@ class InventoryProvider extends ChangeNotifier {
         productNames[productId] = cartItem.product.name;
       }
 
-      // Keep this as a backstop in case an order reaches Completed elsewhere.
       if (stockShortagesForOrder(order).isNotEmpty) {
         continue;
       }
@@ -415,7 +502,7 @@ class InventoryProvider extends ChangeNotifier {
         _persistItem(inventoryItem);
 
         _recordMovement(
-          StockMovement(
+          _createStockMovement(
             id: 'ORDER-${order.id}-${entry.key}',
             productId: entry.key,
             productName:
@@ -430,10 +517,9 @@ class InventoryProvider extends ChangeNotifier {
           ),
         );
 
-        _checkStockLevel(inventoryItem);
+        await _checkStockLevel(inventoryItem);
       }
 
-      // Mark only after the entire order was deducted successfully.
       _stockDeductedOrderIds.add(order.id);
       inventoryChanged = true;
     }
@@ -447,88 +533,152 @@ class InventoryProvider extends ChangeNotifier {
   // ADD STOCK
   // ========================================
 
-  bool addStock(
+  Future<bool> addStock(
     String id,
     int quantity,
     {
     String reason = 'Manual Stock In',
     String notes = '',
-  }) {
+    String? movementId,
+  }) async {
+    debugPrint('[INVENTORY] addStock started: id=$id quantity=$quantity reason=$reason');
     final index = _items.indexWhere(
       (item) => item.id == id,
     );
 
     if (index == -1) {
+      debugPrint('[INVENTORY] addStock rejected: item not found');
       return false;
     }
 
     if (quantity <= 0) {
+      debugPrint('[INVENTORY] addStock rejected: invalid quantity');
       return false;
     }
 
-    final item = _items[index];
-    final previousStock = item.stock;
-    item.stock += quantity;
-    _persistItem(item);
+    final effectiveMovementId = movementId ?? 'STOCK-IN-${DateTime.now().microsecondsSinceEpoch}-$id';
+    if (_movements.any((movement) => movement.id == effectiveMovementId)) {
+      debugPrint('[INVENTORY] addStock skipped: duplicate movement id');
+      return true;
+    }
 
-    _recordMovement(
-      StockMovement(
-        id: 'STOCK-IN-${DateTime.now().microsecondsSinceEpoch}-$id',
-        productId: item.id,
-        productName: item.productName,
-        quantity: quantity,
-        previousStock: previousStock,
-        newStock: item.stock,
-        reason: reason,
-        notes: notes,
-        date: DateTime.now(),
-        type: 'Stock In',
-      ),
-    );
+    try {
+      debugPrint('[INVENTORY] addStock updating stock');
+      final item = _items[index];
+      final previousStock = item.stock;
+      item.stock += quantity;
+      _persistItem(item);
 
-    _checkStockLevel(
-      item,
-    );
+      debugPrint('[INVENTORY] addStock recording movement');
+      _recordMovement(
+        _createStockMovement(
+          id: effectiveMovementId,
+          productId: item.id,
+          productName: item.productName,
+          quantity: quantity,
+          previousStock: previousStock,
+          newStock: item.stock,
+          reason: reason,
+          notes: notes,
+          date: DateTime.now(),
+          type: 'Stock In',
+        ),
+      );
 
-    notifyListeners();
+      debugPrint('[INVENTORY] addStock checking stock level');
+      await _checkStockLevel(
+        item,
+      );
+      debugPrint('[INVENTORY] addStock stock level check completed');
 
-    return true;
+      notifyListeners();
+
+      debugPrint('[INVENTORY] addStock completed: true');
+      return true;
+    } catch (error) {
+      debugPrint('[INVENTORY] addStock FAILED: $error');
+      _items[index].stock = _items[index].stock - quantity;
+      notifyListeners();
+      return false;
+    }
   }
 
   // ========================================
   // DEDUCT STOCK
   // ========================================
 
-  bool deductStock(
+  Future<bool> deductStock(
     String id,
-    int quantity,
-  ) {
+    int quantity, {
+    String reason = 'Manual Stock Out',
+    String notes = '',
+    String? movementId,
+  }) async {
+    debugPrint('[INVENTORY] deductStock started: id=$id quantity=$quantity reason=$reason');
     final index = _items.indexWhere(
       (item) => item.id == id,
     );
 
     if (index == -1) {
+      debugPrint('[INVENTORY] deductStock rejected: item not found');
       return false;
     }
 
     if (quantity <= 0) {
+      debugPrint('[INVENTORY] deductStock rejected: invalid quantity');
       return false;
     }
 
     if (_items[index].stock < quantity) {
+      debugPrint('[INVENTORY] deductStock rejected: insufficient stock');
       return false;
     }
 
-    _items[index].stock -= quantity;
-    _persistItem(_items[index]);
+    final effectiveMovementId = movementId ?? 'STOCK-OUT-${DateTime.now().microsecondsSinceEpoch}-$id';
+    if (_movements.any((movement) => movement.id == effectiveMovementId)) {
+      debugPrint('[INVENTORY] deductStock skipped: duplicate movement id');
+      return true;
+    }
 
-    _checkStockLevel(
-      _items[index],
-    );
+    try {
+      debugPrint('[INVENTORY] deductStock updating stock');
+      final item = _items[index];
+      final previousStock = item.stock;
+      item.stock -= quantity;
+      _persistItem(item);
 
-    notifyListeners();
+      debugPrint('[INVENTORY] deductStock recording movement');
+      _recordMovement(
+        _createStockMovement(
+          id: effectiveMovementId,
+          productId: item.id,
+          productName: item.productName,
+          quantity: quantity,
+          previousStock: previousStock,
+          newStock: item.stock,
+          reason: reason,
+          notes: notes,
+          date: DateTime.now(),
+          type: 'Stock Out',
+        ),
+      );
 
-    return true;
+      debugPrint('[INVENTORY] deductStock checking stock level');
+      await _checkStockLevel(
+        item,
+      );
+      debugPrint('[INVENTORY] deductStock stock level check completed');
+
+      notifyListeners();
+
+      debugPrint('[INVENTORY] deductStock completed: true');
+      return true;
+    } catch (error) {
+      debugPrint('[INVENTORY] deductStock FAILED: $error');
+      _items[index].stock = _items[index].stock + quantity;
+      notifyListeners();
+      return false;
+    }
   }
 
   // ========================================
@@ -537,20 +687,76 @@ class InventoryProvider extends ChangeNotifier {
 
 
 
+  StockMovement _createStockMovement({
+    required String id,
+    required String productId,
+    required String productName,
+    required int quantity,
+    required int previousStock,
+    required int newStock,
+    required String reason,
+    required String notes,
+    required DateTime date,
+    required String type,
+  }) {
+    return StockMovement(
+      id: id,
+      productId: productId,
+      productName: productName,
+      quantity: quantity,
+      previousStock: previousStock,
+      newStock: newStock,
+      reason: reason,
+      notes: notes,
+      date: date,
+      type: type,
+      performedByUid: _performedBy?['uid'] ?? '',
+      performedByName: _performedBy?['name'] ?? '',
+      performedByRole: _performedBy?['role'] ?? '',
+    );
+  }
+
   void addStockMovement(
     StockMovement movement,
   ) {
-    _recordMovement(movement);
+    final performerUid = movement.performedByUid.isEmpty
+        ? (_performedBy?['uid'] ?? '')
+        : movement.performedByUid;
+    final performerName = movement.performedByName.isEmpty
+        ? (_performedBy?['name'] ?? '')
+        : movement.performedByName;
+    final performerRole = movement.performedByRole.isEmpty
+        ? (_performedBy?['role'] ?? '')
+        : movement.performedByRole;
+
+    final merged = StockMovement(
+      id: movement.id,
+      productId: movement.productId,
+      productName: movement.productName,
+      quantity: movement.quantity,
+      previousStock: movement.previousStock,
+      newStock: movement.newStock,
+      reason: movement.reason,
+      notes: movement.notes,
+      date: movement.date,
+      type: movement.type,
+      performedByUid: performerUid,
+      performedByName: performerName,
+      performedByRole: performerRole,
+    );
+    _recordMovement(merged);
 
     notifyListeners();
   }
 
   void _recordMovement(StockMovement movement) {
+    debugPrint('[INVENTORY] _recordMovement: id=${movement.id} type=${movement.type}');
     _movements.insert(
       0,
       movement,
     );
 
     _persistMovement(movement);
+    debugPrint('[INVENTORY] _recordMovement completed');
   }
 }

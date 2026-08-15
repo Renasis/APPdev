@@ -25,21 +25,26 @@ import 'features/customer/address/providers/address_provider.dart';
 import 'features/customer/profile/providers/profile_provider.dart';
 import 'features/customer/notifications/providers/notification_provider.dart'
     as customer_notifications;
+import 'features/shared/notifications/repository/notification_repository.dart';
 import 'features/customer/reviews/providers/review_provider.dart';
 import 'features/customer/products/providers/comparison_provider.dart';
 import 'features/customer/products/providers/recently_viewed_provider.dart';
 import 'features/customer/saved_builds/providers/saved_build_provider.dart';
 import 'features/customer/pc_builder/providers/pc_builder_provider.dart';
 import 'features/customer/support/providers/support_provider.dart';
+import 'features/customer/support/repository/support_repository.dart';
 
 // ADMIN PROVIDERS
 import 'features/admin/products/providers/admin_product_provider.dart';
 import 'features/admin/inventory/providers/inventory_provider.dart';
 import 'features/admin/suppliers/providers/supplier_provider.dart';
+import 'features/admin/suppliers/repository/supplier_repository.dart';
 import 'features/admin/purchase_orders/providers/purchase_order_provider.dart';
 import 'features/admin/staff/providers/staff_provider.dart';
 import 'features/admin/staff/services/staff_account_service.dart';
 import 'features/admin/sales/providers/sales_provider.dart';
+import 'features/admin/sales/providers/walk_in_sale_provider.dart';
+import 'features/admin/sales/repository/walk_in_sale_repository.dart';
 import 'features/admin/customers/providers/customer_provider.dart';
 import 'features/admin/reports/providers/reports_provider.dart';
 import 'package:pc_parts_application/features/admin/notifications/providers/notification_provider.dart'
@@ -57,6 +62,10 @@ Future<void> main() async {
   final productRepository = ProductRepository();
   final inventoryRepository = InventoryRepository();
   final orderRepository = OrderRepository();
+  final supplierRepository = SupplierRepository();
+  final purchaseOrderRepository = PurchaseOrderRepository();
+  final userService = UserService();
+  final notificationRepository = NotificationRepository();
 
   runApp(
     MultiProvider(
@@ -64,8 +73,13 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(
             FirebaseAuthService(),
-            UserService(),
+            userService,
+            StaffAccountService(),
           ),
+        ),
+
+        Provider<UserService>(
+          create: (_) => userService,
         ),
 
         // ========================================
@@ -81,12 +95,54 @@ Future<void> main() async {
 
         ChangeNotifierProvider(create: (_) => AddressProvider()),
 
-        ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProxyProvider2<
+          AuthProvider,
+          UserService,
+          ProfileProvider
+        >(
+          create: (context) {
+            return ProfileProvider(
+              userService: context.read<UserService>(),
+              authProvider: context.read<AuthProvider>(),
+            );
+          },
+          update: (context, authProvider, userService, profileProvider) {
+            return profileProvider ?? ProfileProvider(
+              userService: userService,
+              authProvider: authProvider,
+            );
+          },
+        ),
 
-        ChangeNotifierProvider(create: (_) => SupportProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, SupportProvider>(
+          create: (context) {
+            return SupportProvider(
+              repository: SupportRepository(),
+              authProvider: context.read<AuthProvider>(),
+            );
+          },
+          update: (context, authProvider, supportProvider) {
+            final provider = supportProvider ?? SupportProvider(
+              repository: SupportRepository(),
+              authProvider: authProvider,
+            );
+            return provider;
+          },
+        ),
 
-        ChangeNotifierProvider(
-          create: (_) => customer_notifications.NotificationProvider(),
+        ChangeNotifierProxyProvider<AuthProvider, customer_notifications.NotificationProvider>(
+          create: (context) {
+            return customer_notifications.NotificationProvider(
+              repository: notificationRepository,
+              recipientUid: context.read<AuthProvider>().currentUser?.id,
+            );
+          },
+          update: (context, authProvider, notificationProvider) {
+            final provider = notificationProvider ?? customer_notifications.NotificationProvider();
+            final uid = authProvider.currentUser?.id;
+            provider.setRecipientUid(uid);
+            return provider;
+          },
         ),
 
         ChangeNotifierProxyProvider<
@@ -115,15 +171,29 @@ Future<void> main() async {
         // ========================================
         // ADMIN
         // ========================================
-        ChangeNotifierProvider(
-          create: (_) => admin_notifications.NotificationProvider(),
+        ChangeNotifierProxyProvider<AuthProvider, admin_notifications.NotificationProvider>(
+          create: (context) {
+            return admin_notifications.NotificationProvider(
+              repository: notificationRepository,
+              recipientUid: context.read<AuthProvider>().currentUser?.id,
+            );
+          },
+          update: (context, authProvider, notificationProvider) {
+            final provider = notificationProvider ?? admin_notifications.NotificationProvider();
+            final uid = authProvider.currentUser?.id;
+            provider.setRecipientUid(uid);
+            return provider;
+          },
         ),
 
-        ChangeNotifierProvider(create: (_) => AdminProductProvider()),
+        ChangeNotifierProvider(
+          create: (_) => AdminProductProvider(repository: productRepository),
+        ),
 
-        ChangeNotifierProxyProvider2<
+        ChangeNotifierProxyProvider3<
           admin_notifications.NotificationProvider,
           OrderProvider,
+          AuthProvider,
           InventoryProvider
         >(
           create: (_) => InventoryProvider(repository: inventoryRepository),
@@ -132,6 +202,7 @@ Future<void> main() async {
                 context,
                 notificationProvider,
                 orderProvider,
+                authProvider,
                 inventoryProvider,
               ) {
                 final provider =
@@ -141,6 +212,15 @@ Future<void> main() async {
                 provider.setNotificationProvider(notificationProvider);
 
                 provider.syncCompletedOrders(orderProvider.orders);
+
+                if (authProvider.currentUser != null) {
+                  final user = authProvider.currentUser!;
+                  provider.setPerformedBy(
+                    uid: user.id,
+                    name: user.fullName,
+                    role: user.role.name,
+                  );
+                }
 
                 return provider;
               },
@@ -159,23 +239,34 @@ Future<void> main() async {
           create: (_) => StaffNotificationSettingsProvider(),
         ),
 
-        ChangeNotifierProxyProvider3<
+        ChangeNotifierProxyProvider4<
           OrderProvider,
           InventoryProvider,
           StaffNotificationSettingsProvider,
+          AuthProvider,
           StaffNotificationProvider
         >(
-          create: (_) => StaffNotificationProvider(),
+          create: (context) {
+            return StaffNotificationProvider(
+              repository: notificationRepository,
+              recipientUid: context.read<AuthProvider>().currentUser?.id,
+            );
+          },
           update:
               (
                 context,
                 orderProvider,
                 inventoryProvider,
                 settingsProvider,
+                authProvider,
                 staffNotificationProvider,
               ) {
                 final provider =
-                    staffNotificationProvider ?? StaffNotificationProvider();
+                    staffNotificationProvider ?? StaffNotificationProvider(
+                  repository: notificationRepository,
+                );
+                final uid = authProvider.currentUser?.id;
+                provider.setRecipientUid(uid);
                 provider.sync(
                   orders: orderProvider.orders,
                   inventoryItems: inventoryProvider.items,
@@ -188,9 +279,13 @@ Future<void> main() async {
               },
         ),
 
-        ChangeNotifierProvider(create: (_) => SupplierProvider()),
+        ChangeNotifierProvider(
+          create: (_) => SupplierProvider(repository: supplierRepository),
+        ),
 
-        ChangeNotifierProvider(create: (_) => PurchaseOrderProvider()),
+        ChangeNotifierProvider(
+          create: (_) => PurchaseOrderProvider(repository: purchaseOrderRepository),
+        ),
 
         ChangeNotifierProxyProvider<AuthProvider, StaffProvider>(
           create: (_) => StaffProvider(StaffAccountService()),
@@ -202,19 +297,106 @@ Future<void> main() async {
         ),
 
         ChangeNotifierProxyProvider<OrderProvider, SalesProvider>(
-          create: (_) => SalesProvider(),
+          create: (context) {
+            final orderProvider = context.read<OrderProvider>();
+            return SalesProvider(orderProvider: orderProvider);
+          },
           update: (context, orderProvider, salesProvider) {
-            salesProvider!.updateFromOrders(orderProvider.orders);
-
-            return salesProvider;
+            return salesProvider ?? SalesProvider(orderProvider: orderProvider);
           },
         ),
 
-        ChangeNotifierProvider(create: (_) => CustomerProvider()),
+        ChangeNotifierProxyProvider<InventoryProvider, WalkInSaleProvider>(
+          create: (context) {
+            return WalkInSaleProvider(
+              repository: WalkInSaleRepository(),
+            );
+          },
+          update: (context, inventoryProvider, walkInSaleProvider) {
+            final provider =
+                walkInSaleProvider ?? WalkInSaleProvider(
+              repository: WalkInSaleRepository(),
+            );
+            provider.setInventoryProvider(inventoryProvider);
+            return provider;
+          },
+        ),
 
-        ChangeNotifierProvider(create: (_) => ReportsProvider()),
+        ChangeNotifierProxyProvider2<
+          UserService,
+          OrderProvider,
+          CustomerProvider
+        >(
+          create: (context) {
+            final userService = context.read<UserService>();
+            final orderProvider = context.read<OrderProvider>();
+            return CustomerProvider(
+              userService: userService,
+              orderProvider: orderProvider,
+            );
+          },
+          update: (context, userService, orderProvider, customerProvider) {
+            return customerProvider ?? CustomerProvider(
+              userService: userService,
+              orderProvider: orderProvider,
+            );
+          },
+        ),
 
-        ChangeNotifierProvider(create: (_) => AdminSettingsProvider()),
+        ChangeNotifierProxyProvider5<
+          SalesProvider,
+          AdminProductProvider,
+          PurchaseOrderProvider,
+          OrderProvider,
+          AuthProvider,
+          ReportsProvider
+        >(
+          create: (context) {
+            return ReportsProvider(
+              salesProvider: context.read<SalesProvider>(),
+              productProvider: context.read<AdminProductProvider>(),
+              purchaseOrderProvider: context.read<PurchaseOrderProvider>(),
+              orderProvider: context.read<OrderProvider>(),
+              authProvider: context.read<AuthProvider>(),
+            );
+          },
+          update: (
+            context,
+            salesProvider,
+            productProvider,
+            purchaseOrderProvider,
+            orderProvider,
+            authProvider,
+            reportsProvider,
+          ) {
+            return reportsProvider ?? ReportsProvider(
+              salesProvider: salesProvider,
+              productProvider: productProvider,
+              purchaseOrderProvider: purchaseOrderProvider,
+              orderProvider: orderProvider,
+              authProvider: authProvider,
+            );
+          },
+        ),
+
+        ChangeNotifierProxyProvider2<
+          AuthProvider,
+          UserService,
+          AdminSettingsProvider
+        >(
+          create: (context) {
+            return AdminSettingsProvider(
+              userService: context.read<UserService>(),
+              authProvider: context.read<AuthProvider>(),
+            );
+          },
+          update: (context, authProvider, userService, adminSettingsProvider) {
+            return adminSettingsProvider ?? AdminSettingsProvider(
+              userService: userService,
+              authProvider: authProvider,
+            );
+          },
+        ),
 
         // ADMIN NOTIFICATIONS
       ],

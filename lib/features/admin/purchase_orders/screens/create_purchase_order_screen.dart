@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/purchase_order_provider.dart';
 import '../../suppliers/providers/supplier_provider.dart';
 import '../../products/providers/admin_product_provider.dart';
+import '../../products/widgets/product_search_field.dart';
 
 class CreatePurchaseOrderScreen extends StatefulWidget {
   const CreatePurchaseOrderScreen({
@@ -191,35 +192,11 @@ class _CreatePurchaseOrderScreenState
 
                 const SizedBox(height: 8),
 
-                DropdownButtonFormField<
-                    AdminProduct>(
-                   initialValue: selectedProduct,
-
-                  decoration: InputDecoration(
-                    hintText:
-                        'Select product',
-                    border: OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(12),
-                    ),
-                  ),
-
-                  items: productProvider.products
-                      .map(
-                        (product) =>
-                            DropdownMenuItem<
-                                AdminProduct>(
-                          value: product,
-                          child: Text(
-                            '${product.name} - ₱${product.price.toStringAsFixed(2)}',
-                          ),
-                        ),
-                      )
-                      .toList(),
-
-                  onChanged: (value) {
+                ProductSearchField(
+                  selectedProduct: selectedProduct,
+                  onSelected: (product) {
                     setState(() {
-                      selectedProduct = value;
+                      selectedProduct = product;
                     });
                   },
                 ),

@@ -55,6 +55,7 @@ class OrderProvider extends ChangeNotifier {
   // =========================
 
   void placeOrder({
+    required String customerId,
     required String customerName,
     required String phoneNumber,
     required String deliveryAddress,
@@ -67,6 +68,8 @@ class OrderProvider extends ChangeNotifier {
       id: DateTime.now()
           .millisecondsSinceEpoch
           .toString(),
+
+      customerId: customerId,
 
       customerName: customerName,
 
@@ -132,9 +135,10 @@ class OrderProvider extends ChangeNotifier {
     if (currentOrder.status == newStatus) {
       return;
     }
-
     final updatedOrder = OrderModel(
       id: currentOrder.id,
+
+      customerId: currentOrder.customerId,
 
       customerName:
           currentOrder.customerName,
@@ -155,9 +159,11 @@ class OrderProvider extends ChangeNotifier {
       paymentMethod:
           currentOrder.paymentMethod,
 
-      paymentStatus: currentOrder.paymentStatus,
+      paymentStatus:
+          currentOrder.paymentStatus,
 
-      paymentReference: currentOrder.paymentReference,
+      paymentReference:
+          currentOrder.paymentReference,
 
       deliveryDetails: currentOrder.deliveryDetails,
 
@@ -166,7 +172,6 @@ class OrderProvider extends ChangeNotifier {
 
       status: newStatus,
     );
-
     _orders[index] = updatedOrder;
     _persist(updatedOrder);
 
@@ -234,6 +239,7 @@ class OrderProvider extends ChangeNotifier {
     final order = _orders[index];
     final updatedOrder = OrderModel(
       id: order.id,
+      customerId: order.customerId,
       customerName: order.customerName,
       phoneNumber: order.phoneNumber,
       deliveryAddress: order.deliveryAddress,
@@ -285,6 +291,7 @@ class OrderProvider extends ChangeNotifier {
     final order = _orders[index];
     final shippedOrder = OrderModel(
       id: order.id,
+      customerId: order.customerId,
       customerName: order.customerName,
       phoneNumber: order.phoneNumber,
       deliveryAddress: order.deliveryAddress,

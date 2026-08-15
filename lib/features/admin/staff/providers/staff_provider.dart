@@ -13,6 +13,7 @@ class StaffMember {
   final String role;
   final String? phone;
   final bool isActive;
+  final String status;
   final DateTime? createdAt;
 
   StaffMember({
@@ -22,17 +23,22 @@ class StaffMember {
     required this.role,
     this.phone,
     required this.isActive,
+    required this.status,
     this.createdAt,
   });
 
   factory StaffMember.fromFirestore(Map<String, dynamic> data, String uid) {
+    final rawStatus = data['status'] as String? ?? 'active';
+    final rawIsActive = data['isActive'] as bool? ?? true;
+
     return StaffMember(
       uid: uid,
       name: data['name'] as String? ?? '',
       email: data['email'] as String? ?? '',
       role: data['role'] as String? ?? 'staff',
       phone: data['phone'] as String?,
-      isActive: data['isActive'] as bool? ?? true,
+      isActive: rawStatus == 'active' && rawIsActive,
+      status: rawStatus,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -41,9 +47,10 @@ class StaffMember {
     return {
       'name': name,
       'email': email,
-      'role': role,
+      'role': role.toLowerCase(),
       'phone': phone ?? '',
       'isActive': isActive,
+      'status': status,
     };
   }
 }
@@ -52,16 +59,21 @@ class StaffProvider extends ChangeNotifier {
   StaffProvider(this._staffAccountService) {
     if (_authProvider != null && _authProvider!.isLoggedIn) {
       _loadStaff();
+      _loadPendingInvitations();
     }
   }
 
   final StaffAccountService _staffAccountService;
   AuthProvider? _authProvider;
   StreamSubscription<List<Map<String, dynamic>>>? _staffSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _pendingInvitationsSubscription;
 
   final List<StaffMember> _staff = [];
+  final List<Map<String, dynamic>> _pendingInvitations = [];
 
   List<StaffMember> get staff => List.unmodifiable(_staff);
+  List<Map<String, dynamic>> get pendingInvitations => List.unmodifiable(_pendingInvitations);
+  bool get hasPendingInvitations => _pendingInvitations.isNotEmpty;
 
   bool get isLoading => _isLoading;
   bool _isLoading = false;
@@ -72,6 +84,7 @@ class StaffProvider extends ChangeNotifier {
     _authProvider = authProvider;
     if (authProvider.isLoggedIn) {
       _loadStaff();
+      _loadPendingInvitations();
     }
   }
 
@@ -98,6 +111,25 @@ class StaffProvider extends ChangeNotifier {
     } catch (error) {
       _errorMessage = 'Failed to load staff.';
       _setLoading(false);
+    }
+  }
+
+  Future<void> _loadPendingInvitations() async {
+    try {
+      _pendingInvitationsSubscription?.cancel();
+      _pendingInvitationsSubscription = _staffAccountService.watchPendingInvitations().listen(
+        (invitations) {
+          _pendingInvitations
+            ..clear()
+            ..addAll(invitations);
+          notifyListeners();
+        },
+        onError: (error) {
+          _errorMessage = 'Failed to load pending invitations.';
+        },
+      );
+    } catch (error) {
+      _errorMessage = 'Failed to load pending invitations.';
     }
   }
 
@@ -188,6 +220,7 @@ class StaffProvider extends ChangeNotifier {
   @override
   void dispose() {
     _staffSubscription?.cancel();
+    _pendingInvitationsSubscription?.cancel();
     super.dispose();
   }
 }

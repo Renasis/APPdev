@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../providers/staff_provider.dart';
 import '../widgets/staff_tile.dart';
@@ -49,9 +50,8 @@ class StaffListScreen extends StatelessWidget {
           final totalStaff = provider.staff.length;
           final activeStaff = provider.staff.where((staff) => staff.isActive).length;
           final inactiveStaff = totalStaff - activeStaff;
-          final managers = provider.staff.where((staff) => staff.role == 'Manager').length;
 
-          if (provider.staff.isEmpty) {
+          if (provider.staff.isEmpty && !provider.hasPendingInvitations) {
             return const Center(
               child: Text(
                 'No staff found.',
@@ -61,6 +61,87 @@ class StaffListScreen extends StatelessWidget {
 
           return Column(
             children: [
+              if (provider.hasPendingInvitations) ...[
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Pending Invitations',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...provider.pendingInvitations.map((invitation) {
+                        final createdAt = invitation['createdAt'] as Timestamp?;
+                        final dateText = createdAt != null
+                            ? 'Invited: ${createdAt.toDate().toString().split(' ')[0]}'
+                            : 'Invited: recently';
+
+                        return Card(
+                          color: Colors.orange.shade50,
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.person_add_outlined,
+                              color: Colors.orange,
+                            ),
+                            title: Text(
+                              invitation['name'] as String? ?? 'Unknown',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(invitation['email'] as String? ?? ''),
+                                if (invitation['phone'] != null &&
+                                    (invitation['phone'] as String).isNotEmpty)
+                                  Text(
+                                    invitation['phone'] as String,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                Text(
+                                  dateText,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Pending',
+                                style: TextStyle(
+                                  color: Colors.orange.shade800,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+              ],
+
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: GridView.count(
@@ -87,12 +168,6 @@ class StaffListScreen extends StatelessWidget {
                       title: 'Inactive',
                       value: inactiveStaff.toString(),
                       icon: Icons.person_off_outlined,
-                    ),
-
-                    _StaffStatCard(
-                      title: 'Managers',
-                      value: managers.toString(),
-                      icon: Icons.manage_accounts_outlined,
                     ),
                   ],
                 ),

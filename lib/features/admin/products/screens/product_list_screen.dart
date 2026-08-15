@@ -85,11 +85,15 @@ class ProductListScreen extends StatelessWidget {
                   );
                 },
 
-                onDelete: () {
+                onDelete: () async {
                   provider.deleteProduct(
                     product.id,
                   );
-                  inventoryProvider.removeInventoryItem(product.id);
+                  await inventoryProvider.removeInventoryItem(product.id);
+
+                  if (!context.mounted) {
+                    return;
+                  }
 
                   ScaffoldMessenger.of(
                     context,

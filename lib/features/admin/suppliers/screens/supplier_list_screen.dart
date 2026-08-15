@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../providers/supplier_provider.dart';
 import '../widgets/supplier_tile.dart';
+import 'add_supplier_screen.dart';
+import 'edit_supplier_screen.dart';
 
 class SupplierListScreen extends StatelessWidget {
   const SupplierListScreen({
@@ -21,12 +23,10 @@ class SupplierListScreen extends StatelessWidget {
       floatingActionButton:
           FloatingActionButton(
         onPressed: () {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Add Supplier Screen coming next.',
-              ),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AddSupplierScreen(),
             ),
           );
         },
@@ -62,33 +62,56 @@ class SupplierListScreen extends StatelessWidget {
               return SupplierTile(
                 supplier: supplier,
 
-                onEdit: () {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Edit ${supplier.name}',
-                      ),
-                    ),
-                  );
-                },
+                        onEdit: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EditSupplierScreen(
+                                supplier: supplier,
+                              ),
+                            ),
+                          );
+                        },
 
-                onDelete: () {
-                  provider.deleteSupplier(
-                    supplier.id,
-                  );
+                        onDelete: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogContext) {
+                              return AlertDialog(
+                                title: const Text('Delete Supplier?'),
+                                content: Text(
+                                  'Are you sure you want to delete ${supplier.name}?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext, false);
+                                    },
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext, true);
+                                    },
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
 
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${supplier.name} deleted',
-                      ),
-                    ),
-                  );
-                },
+                          if (confirmed != true) {
+                            return;
+                          }
+
+                          provider.deleteSupplier(supplier.id);
+
+                          if (!context.mounted) return;
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('${supplier.name} deleted')),
+                          );
+                        },
               );
             },
           );

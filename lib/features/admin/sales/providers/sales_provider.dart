@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../customer/orders/models/order_model.dart';
+import '../../../customer/orders/providers/order_provider.dart';
 
 class SalesData {
   final String productId;
@@ -17,14 +18,27 @@ class SalesData {
 }
 
 class SalesProvider extends ChangeNotifier {
+  SalesProvider({OrderProvider? orderProvider}) : _orderProvider = orderProvider {
+    if (_orderProvider == null) {
+      return;
+    }
+
+    _orderProvider.orders;
+    _orderProvider.addListener(_onOrdersChanged);
+    _onOrdersChanged();
+  }
+
+  final OrderProvider? _orderProvider;
+
   List<OrderModel> _completedOrders = const [];
   List<SalesData> _sales = const [];
 
-  /// Rebuilds all sales data from the shared order list.
-  ///
-  /// This deliberately replaces the previous snapshot rather than adding to it,
-  /// so a Provider rebuild can never double-count an order.
-  void updateFromOrders(List<OrderModel> orders) {
+  void _onOrdersChanged() {
+    final orders = _orderProvider?.orders ?? const [];
+    _rebuildFromOrders(orders);
+  }
+
+  void _rebuildFromOrders(List<OrderModel> orders) {
     final completedOrders = orders
         .where((order) => order.status == 'Completed')
         .toList(growable: false);
@@ -131,4 +145,13 @@ class SalesProvider extends ChangeNotifier {
   }
 
   String get topProduct => bestSellingProduct.productName;
+
+  @override
+  void dispose() {
+    if (_orderProvider != null) {
+      _orderProvider.removeListener(_onOrdersChanged);
+    }
+    super.dispose();
+  }
 }
+

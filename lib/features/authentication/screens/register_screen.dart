@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routes/route_names.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/enums/user_role.dart';
 import '../../../shared/widgets/auth_text_field.dart';
 import '../../../shared/widgets/primary_button.dart';
 
@@ -74,7 +75,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (registered) {
-      context.go(RouteNames.home);
+      final role = authProvider.role;
+      if (role == UserRole.admin) {
+        context.go(RouteNames.adminDashboard);
+      } else if (role == UserRole.staff) {
+        context.go(RouteNames.staffDashboard);
+      } else {
+        context.go(RouteNames.home);
+      }
       return;
     }
 

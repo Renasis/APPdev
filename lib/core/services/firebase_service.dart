@@ -10,6 +10,9 @@ class FirestoreCollections {
   static const stockMovements = 'stock_movements';
   static const orders = 'orders';
   static const users = 'users';
+  static const suppliers = 'suppliers';
+  static const purchaseOrders = 'purchase_orders';
+  static const settings = 'settings';
 }
 
 /// Shared entry point to Firestore for the repositories.

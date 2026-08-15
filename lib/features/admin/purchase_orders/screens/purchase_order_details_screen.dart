@@ -296,13 +296,13 @@ class PurchaseOrderDetailsScreen extends StatelessWidget {
                 height: 54,
 
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (purchaseOrder.status == 'Ordered') {
                       final inventoryProvider =
                           context.read<InventoryProvider>();
 
                       for (final item in purchaseOrder.items) {
-                        inventoryProvider.addStock(
+                        await inventoryProvider.addStock(
                           item.productId,
                           item.quantity,
                           reason: 'Purchase Order Received',

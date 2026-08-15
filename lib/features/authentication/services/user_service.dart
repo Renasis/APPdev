@@ -81,4 +81,33 @@ class UserService {
   Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     await _users.doc(uid).update(data);
   }
+
+  Stream<List<Map<String, dynamic>>> watchCustomers() {
+    return _users
+        .where('role', isEqualTo: 'customer')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              ...data,
+              'uid': doc.id,
+            };
+          }).toList(growable: false),
+        );
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCustomers() async {
+    final snapshot = await _users
+        .where('role', isEqualTo: 'customer')
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        ...data,
+        'uid': doc.id,
+      };
+    }).toList();
+  }
 }

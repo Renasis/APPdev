@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../providers/supplier_provider.dart';
+import '../models/supplier.dart';
 
 class SupplierTile extends StatelessWidget {
   final Supplier supplier;

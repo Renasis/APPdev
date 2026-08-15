@@ -122,17 +122,17 @@ class SupportScreen extends StatelessWidget {
                       inquiry.status,
                     ),
 
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              InquiryDetailsScreen(
-                            inquiry: inquiry,
-                          ),
-                        ),
-                      );
-                    },
+                     onTap: () {
+                       Navigator.push(
+                         context,
+                         MaterialPageRoute(
+                           builder: (_) =>
+                               InquiryDetailsScreen(
+                             inquiryId: inquiry.id,
+                           ),
+                         ),
+                       );
+                     },
                   ),
                 );
               },

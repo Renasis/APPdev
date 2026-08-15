@@ -18,7 +18,7 @@ ProductModel _product(String id, String category) {
 }
 
 void main() {
-  test('a complete PC build including a case adds one build bundle to cart', () {
+  test('a complete PC build including a case adds one build bundle to cart', () async {
     final builder = PcBuilderProvider();
     builder.selectCpu(_product('cpu', 'CPU'));
     builder.selectGpu(_product('gpu', 'GPU'));
@@ -30,7 +30,7 @@ void main() {
 
     final inventory = InventoryProvider();
     for (final product in builder.selectedProducts) {
-      inventory.addInventoryItem(
+      await inventory.addInventoryItem(
         id: product.id,
         productName: product.name,
         stock: product.stock,

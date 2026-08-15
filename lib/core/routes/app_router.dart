@@ -6,12 +6,17 @@ import '../../features/authentication/screens/forgot_password_screen.dart';
 import '../../features/authentication/screens/guest_prompt_screen.dart';
 import '../../features/authentication/screens/login_screen.dart';
 import '../../features/authentication/screens/register_screen.dart';
+import '../../features/authentication/screens/staff_register_screen.dart';
 import '../../features/authentication/screens/splash_screen.dart';
 import '../../features/authentication/screens/guest_login_required_screen.dart';
 import '../../features/authentication/screens/otp_screen.dart';
 import '../../features/authentication/screens/role_selection_screen.dart';
 import '../../features/authentication/screens/staff_admin_login_screen.dart';
 import '../../features/staff/shell/screens/staff_shell_screen.dart';
+import '../../features/admin/sales/screens/walk_in_sale_screen.dart';
+import '../../features/customer/support/screens/support_screen.dart';
+import '../../features/customer/support/screens/create_inquiry_screen.dart';
+import '../../features/customer/support/screens/inquiry_details_screen.dart';
 
 import '../../navigation/main_navigation_wrapper.dart';
 import '../../features/admin/shell/screens/admin_shell_screen.dart';
@@ -49,6 +54,16 @@ String? _appRedirect(BuildContext context, GoRouterState state) {
 
   if (!auth.isLoggedIn) {
     return RouteNames.login;
+  }
+
+  if (path == RouteNames.walkInSale && auth.role != UserRole.admin && auth.role != UserRole.staff) {
+    return RouteNames.splash;
+  }
+
+  if (auth.currentUser != null && !auth.currentUser!.isActive) {
+    if (path == RouteNames.staffDashboard || path == RouteNames.walkInSale) {
+      return RouteNames.roleSelection;
+    }
   }
 
   if (path == RouteNames.adminDashboard && auth.role != UserRole.admin) {
@@ -103,6 +118,11 @@ GoRouter _buildRouter() {
       ),
 
       GoRoute(
+        path: RouteNames.staffRegister,
+        builder: (context, state) => const StaffRegisterScreen(),
+      ),
+
+      GoRoute(
         path: RouteNames.guestLoginRequired,
         builder: (context, state) => const GuestLoginRequiredScreen(),
       ),
@@ -130,6 +150,29 @@ GoRouter _buildRouter() {
       GoRoute(
         path: RouteNames.adminDashboard,
         builder: (context, state) => const AdminShellScreen(),
+      ),
+
+      GoRoute(
+        path: RouteNames.walkInSale,
+        builder: (context, state) => const WalkInSaleScreen(),
+      ),
+
+      GoRoute(
+        path: RouteNames.support,
+        builder: (context, state) => const SupportScreen(),
+      ),
+
+      GoRoute(
+        path: '${RouteNames.support}/create',
+        builder: (context, state) => const CreateInquiryScreen(),
+      ),
+
+      GoRoute(
+        path: '${RouteNames.support}/:inquiryId',
+        builder: (context, state) {
+          final inquiryId = state.pathParameters['inquiryId'] ?? '';
+          return InquiryDetailsScreen(inquiryId: inquiryId);
+        },
       ),
     ],
   );

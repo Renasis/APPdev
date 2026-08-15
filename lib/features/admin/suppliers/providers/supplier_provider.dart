@@ -1,66 +1,88 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-class Supplier {
-  final String id;
-  final String name;
-  final String contactPerson;
-  final String phone;
-  final String email;
-  final String address;
-
-  Supplier({
-    required this.id,
-    required this.name,
-    required this.contactPerson,
-    required this.phone,
-    required this.email,
-    required this.address,
-  });
-}
+import '../models/supplier.dart';
+import '../repository/supplier_repository.dart';
 
 class SupplierProvider extends ChangeNotifier {
-  final List<Supplier> _suppliers = [
-    Supplier(
-      id: '1',
-      name: 'TechSource PH',
-      contactPerson: 'Juan Dela Cruz',
-      phone: '09123456789',
-      email: 'techsource@gmail.com',
-      address: 'Quezon City',
-    ),
-  ];
-
-  List<Supplier> get suppliers =>
-      _suppliers;
-
-  void addSupplier(
-    Supplier supplier,
-  ) {
-    _suppliers.add(supplier);
-    notifyListeners();
-  }
-
-  void updateSupplier(
-    Supplier supplier,
-  ) {
-    final index =
-        _suppliers.indexWhere(
-      (s) => s.id == supplier.id,
-    );
-
-    if (index != -1) {
-      _suppliers[index] = supplier;
-      notifyListeners();
+  SupplierProvider({SupplierRepository? repository})
+      : _repository = repository {
+    if (repository == null) {
+      return;
     }
+
+    _subscription = repository.watchSuppliers().listen(
+      _onSuppliers,
+      onError: _onError,
+    );
   }
 
-  void deleteSupplier(
-    String id,
-  ) {
-    _suppliers.removeWhere(
-      (s) => s.id == id,
-    );
+  final SupplierRepository? _repository;
+
+  StreamSubscription<List<Supplier>>? _subscription;
+
+  final List<Supplier> _suppliers = [];
+
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  List<Supplier> get suppliers => List.unmodifiable(_suppliers);
+
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  void _onSuppliers(List<Supplier> suppliers) {
+    _suppliers
+      ..clear()
+      ..addAll(suppliers);
+    _isLoading = false;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _onError(Object error) {
+    _isLoading = false;
+    _errorMessage = 'Could not load suppliers.';
+    notifyListeners();
+  }
+
+  Future<void> addSupplier(Supplier supplier) async {
+    try {
+      await _repository?.createSupplier(supplier);
+      _errorMessage = null;
+    } catch (error) {
+      _errorMessage = 'Failed to add supplier.';
+    }
 
     notifyListeners();
+  }
+
+  Future<void> updateSupplier(Supplier supplier) async {
+    try {
+      await _repository?.updateSupplier(supplier);
+      _errorMessage = null;
+    } catch (error) {
+      _errorMessage = 'Failed to update supplier.';
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> deleteSupplier(String id) async {
+    try {
+      await _repository?.deleteSupplier(id);
+      _errorMessage = null;
+    } catch (error) {
+      _errorMessage = 'Failed to delete supplier.';
+    }
+
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
